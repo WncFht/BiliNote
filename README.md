@@ -56,6 +56,25 @@ BiliNote 是一个开源的 AI 视频笔记助手，支持通过哔哩哔哩、Y
 
 ## 🚀 快速开始
 
+### 0. 安装 uv 与 FFmpeg
+
+```bash
+# 安装 uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# macOS
+brew install ffmpeg
+
+# Ubuntu / Debian
+sudo apt install ffmpeg
+```
+
+国内网络建议在执行 `uv sync` 时使用镜像：
+
+```bash
+export UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
 ### 1. 克隆仓库
 
 ```bash
@@ -68,8 +87,8 @@ mv .env.example .env
 
 ```bash
 cd backend
-pip install -r requirements.txt
-python main.py
+uv sync
+uv run python main.py
 ```
 
 ### 3. 启动前端（Vite + React）
@@ -81,6 +100,44 @@ pnpm dev
 ```
 
 访问：`http://localhost:5173`
+
+## 🔐 配置与 API Key
+
+### 1. 总结模型 API Key
+
+要真正生成视频总结，**至少需要配置一个模型供应商的 API Key**。
+
+- 推荐方式：启动后在前端 `Settings / 模型供应商` 中填写
+- 内置供应商默认会写入数据库，但 `api_key` 为空，需要你自己补上
+- 常用供应商：OpenAI、DeepSeek、Qwen、Gemini、Groq、Ollama
+
+如果你要用 `gpt-5.4`，推荐这样配：
+
+- Provider: `OpenAI`
+- Base URL: `https://api.openai.com/v1`
+- Model: `gpt-5.4`
+
+### 2. 转写能力
+
+- `fast-whisper`：默认方案，本地转写，不需要云端 API Key
+- `mlx-whisper`：Apple Silicon 本地转写，不需要云端 API Key
+- `bcut`：调用 B 站生态接口，不需要单独模型 Key，但依赖接口可用性
+- `groq`：需要在 `模型供应商` 中配置 `Groq` 的 API Key
+
+### 3. Bilibili Cookies
+
+如果你的主要来源是 B 站，**建议配置 cookies 文件**，可以提升字幕抓取成功率：
+
+```bash
+BILIBILI_COOKIES_FILE=cookies.txt
+```
+
+### 4. 常见环境变量
+
+- `.env.example`：Docker / 整体项目运行配置
+- `backend/.env.example`：单独启动后端时的参考配置
+- `HF_ENDPOINT=https://hf-mirror.com`：国内网络下建议保留
+- `DATABASE_URL`：默认 SQLite，可不改
 
 ## ⚙️ 依赖说明
 ### 🎬 FFmpeg
@@ -107,6 +164,8 @@ sudo apt install ffmpeg
 确保你已安装 Docker 和 Docker Compose：
 
 [docker 部署](https://github.com/JefferyHcool/bilinote-deploy/blob/master/README.md)
+
+当前仓库的 Docker 后端镜像已经改为使用 `uv + pyproject.toml + uv.lock` 构建，并默认使用国内镜像友好的 Python 包源。
 
 ## 🧠 TODO
 

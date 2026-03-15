@@ -31,7 +31,7 @@ copy .env.example backend\.env
 
 REM 步骤 2: 执行 PyInstaller 打包，直接添加已存在的 .env 文件
 echo 开始 PyInstaller 打包...
-pyinstaller ^
+uv --project backend run pyinstaller ^
   -y ^
   --name BiliNoteBackend ^
   --paths backend ^
