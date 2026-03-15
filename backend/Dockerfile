@@ -10,14 +10,18 @@ RUN rm -f /etc/apt/sources.list && \
     apt-get install -y ffmpeg && \
     rm -rf /var/lib/apt/lists/*
 
-# 确保 PATH 中包含 ffmpeg 路径（可选）
-ENV PATH="/usr/bin:${PATH}"
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple uv
 
-# 设置 Hugging Face 镜像源环境变量
-ENV HF_ENDPOINT=https://hf-mirror.com
+ENV PATH="/opt/venv/bin:/usr/bin:${PATH}" \
+    HF_ENDPOINT=https://hf-mirror.com \
+    UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple \
+    UV_PYTHON=3.11 \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_LINK_MODE=copy
 
 WORKDIR /app
+COPY ./backend/pyproject.toml ./backend/uv.lock /app/
+RUN uv sync --frozen --no-dev
 COPY ./backend /app
-RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
 CMD ["python", "main.py"]

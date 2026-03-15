@@ -141,15 +141,15 @@ export default function AboutPage() {
                 <div className="bg-muted rounded-md p-4 font-mono text-sm">
                   cd backend
                   <br />
-                  pip install -r requirements.txt
+                  uv sync
                   <br />
-                  python main.py
+                  uv run python main.py
                 </div>
               </div>
               <div>
                 <h3 className="mb-3 text-xl font-semibold">3. 启动前端（Vite + React）</h3>
                 <div className="bg-muted rounded-md p-4 font-mono text-sm">
-                  cd BiliNote_frontend
+                  cd BillNote_frontend
                   <br />
                   pnpm install
                   <br />
