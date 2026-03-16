@@ -142,3 +142,16 @@ default = true
 gpu = [
     "transformers[torch]>=4.23",
 ]
+
+[project.scripts]
+bilinote-cli = "app.cli.note:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

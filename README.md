@@ -122,6 +122,33 @@ pnpm dev
 - 后端 PID：`backend.local.pid`
 - 前端 PID：`frontend.local.pid`
 
+### 5. 直接使用 CLI 生成笔记
+
+如果你不想启动前后端服务，可以直接在后端目录运行 CLI：
+
+```bash
+cd backend
+uv run bilinote-cli "https://www.bilibili.com/video/BV19CwVz7EAU"
+```
+
+常用参数：
+
+```bash
+uv run bilinote-cli "<bilibili_url>" --style detailed
+uv run bilinote-cli "<bilibili_url>" --style concise
+uv run bilinote-cli "<bilibili_url>" --no-screenshot
+uv run bilinote-cli "<bilibili_url>" --output note_results/custom_note.md
+```
+
+默认行为：
+
+- provider 固定为当前本地配置里的 `openai`
+- model 固定为 `gpt-5.4`
+- 默认 `style=detailed`
+- 默认开启截图
+- 默认开启视频理解，采样间隔 `4` 秒，拼图 `3x3`
+- 输出只保留 Markdown 笔记，不生成思维导图
+
 ## 🔐 配置与 API Key
 
 ### 1. 总结模型 API Key
