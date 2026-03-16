@@ -7,9 +7,8 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
-from app.db.init_db import init_db
-from app.db.provider_dao import seed_default_providers
 from app.exceptions.exception_handlers import register_exception_handlers
+from app.runtime_config import initialize_backend_runtime
 # from app.db.model_dao import init_model_table
 # from app.db.provider_dao import init_provider_table
 from app.utils.logger import get_logger
@@ -39,9 +38,8 @@ if not os.path.exists(out_dir):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     register_handler()
-    init_db()
+    initialize_backend_runtime()
     get_transcriber(transcriber_type=os.getenv("TRANSCRIBER_TYPE", "fast-whisper"))
-    seed_default_providers()
     yield
 
 app = create_app(lifespan=lifespan)

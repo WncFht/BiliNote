@@ -5,10 +5,8 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from dotenv import load_dotenv
 
-from app.db.init_db import init_db
-from app.db.provider_dao import seed_default_providers
+from app.runtime_config import initialize_backend_runtime
 from app.validators.video_url_validator import is_supported_video_url
 
 
@@ -35,9 +33,7 @@ def initialize_runtime() -> None:
         return
 
     backend_root = project_root()
-    load_dotenv(backend_root / ".env", override=False)
-    init_db()
-    seed_default_providers()
+    initialize_backend_runtime(backend_root / ".env")
     _RUNTIME_INITIALIZED = True
 
 
