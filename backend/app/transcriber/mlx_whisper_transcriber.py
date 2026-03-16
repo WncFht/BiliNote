@@ -27,7 +27,8 @@ class MLXWhisperTranscriber(Transcriber):
             raise RuntimeError("必须设置环境变量 TRANSCRIBER_TYPE=mlx-whisper 才能使用 MLX Whisper")
             
         self.model_size = model_size
-        self.model_name = f"mlx-community/whisper-{model_size}"
+        repo_suffix = model_size if model_size.endswith("-mlx") else f"{model_size}-mlx"
+        self.model_name = f"mlx-community/whisper-{repo_suffix}"
         self.model_path = None
         
         # 设置模型路径

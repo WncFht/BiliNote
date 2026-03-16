@@ -320,6 +320,7 @@ cython_debug/
 /backend/.idea/*
 /backend/bili_note.db
 /backend/uploads/*
+/backend/cookies.txt
 /backend/.idea/*
 /backend/config/*
 /BiliNote_frontend/.idea/*
