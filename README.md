@@ -101,6 +101,27 @@ pnpm dev
 
 访问：`http://localhost:5173`
 
+### 4. 一键管理本地开发服务
+
+前后端依赖安装完成后，也可以直接使用仓库脚本统一管理：
+
+```bash
+./scripts/dev.sh start
+./scripts/dev.sh status
+./scripts/dev.sh logs backend
+./scripts/dev.sh restart
+./scripts/dev.sh stop
+```
+
+默认行为：
+
+- 后端工作目录：`backend`
+- 前端工作目录：`BillNote_frontend`
+- 后端日志：`backend.local.log`
+- 前端日志：`frontend.local.log`
+- 后端 PID：`backend.local.pid`
+- 前端 PID：`frontend.local.pid`
+
 ## 🔐 配置与 API Key
 
 ### 1. 总结模型 API Key
