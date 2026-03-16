@@ -23,5 +23,4 @@ backend/bili_note.db
 backend/uploads
 backend/.idea
 BillNote_frontend/node_modules
-BillNote_frontend/dist
 BillNote_frontend/.idea
