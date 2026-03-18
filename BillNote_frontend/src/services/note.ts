@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import type { TaskStatusResponsePayload } from '@/lib/taskProgress.ts'
 import toast from 'react-hot-toast'
 
 export const generateNote = async (data: {
@@ -59,11 +60,11 @@ export const delete_task = async ({ video_id, platform }) => {
   }
 }
 
-export const get_task_status = async (task_id: string) => {
+export const get_task_status = async (task_id: string): Promise<TaskStatusResponsePayload> => {
   try {
     // 成功提示
 
-    return await request.get('/task_status/' + task_id)
+    return (await request.get('/task_status/' + task_id)) as TaskStatusResponsePayload
   } catch (e) {
     console.error('❌ 请求出错', e)
 

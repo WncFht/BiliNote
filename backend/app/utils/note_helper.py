@@ -1,9 +1,30 @@
 import re
 
 
-import re
+def normalize_math_delimiters(markdown: str) -> str:
+    """
+    将 LaTeX 的括号分隔符统一转换为 Markdown 更友好的美元分隔符。
+    """
 
-import re
+    def replace_block(match: re.Match[str]) -> str:
+        content = match.group(1).strip()
+        return f"$$\n{content}\n$$"
+
+    def replace_inline(match: re.Match[str]) -> str:
+        content = match.group(1).strip()
+        return f"${content}$"
+
+    normalized = re.sub(
+        r"\\\[\s*([\s\S]*?)\s*\\\]",
+        replace_block,
+        markdown,
+    )
+    normalized = re.sub(
+        r"\\\((.+?)\\\)",
+        replace_inline,
+        normalized,
+    )
+    return normalized
 
 def replace_content_markers(markdown: str, video_id: str, platform: str = 'bilibili') -> str:
     """

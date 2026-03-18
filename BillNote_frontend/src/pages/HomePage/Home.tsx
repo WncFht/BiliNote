@@ -4,7 +4,8 @@ import NoteForm from '@/pages/HomePage/components/NoteForm.tsx'
 import MarkdownViewer from '@/pages/HomePage/components/MarkdownViewer.tsx'
 import { useTaskStore } from '@/store/taskStore'
 import History from '@/pages/HomePage/components/History.tsx'
-type ViewStatus = 'idle' | 'loading' | 'success' | 'failed'
+import { deriveViewStatus, type ViewStatus } from '@/lib/taskProgress.ts'
+
 export const HomePage: FC = () => {
   const tasks = useTaskStore(state => state.tasks)
   const currentTaskId = useTaskStore(state => state.currentTaskId)
@@ -16,15 +17,7 @@ export const HomePage: FC = () => {
   const content = currentTask?.markdown || ''
 
   useEffect(() => {
-    if (!currentTask) {
-      setStatus('idle')
-    } else if (currentTask.status === 'PENDING') {
-      setStatus('loading')
-    } else if (currentTask.status === 'SUCCESS') {
-      setStatus('success')
-    } else if (currentTask.status === 'FAILED') {
-      setStatus('failed')
-    }
+    setStatus(deriveViewStatus(currentTask?.status))
   }, [currentTask])
 
   // useEffect( () => {

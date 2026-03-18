@@ -30,6 +30,25 @@ class BilibiliDownloaderSubtitleFallbackTest(unittest.TestCase):
         self.assertIsNone(transcript)
         subprocess_run.assert_not_called()
 
+    def test_download_passes_cookiefile_to_ytdlp_when_available(self) -> None:
+        downloader = BilibiliDownloader()
+
+        with (
+            patch.object(downloader, "_resolve_cookiefile", return_value="/tmp/cookies.txt"),
+            patch("app.downloaders.bilibili_downloader.yt_dlp.YoutubeDL") as youtube_dl,
+        ):
+            youtube_dl.return_value.__enter__.return_value.extract_info.return_value = {
+                "id": "BV11UwDzzEMN",
+                "title": "测试标题",
+                "duration": 12.0,
+                "thumbnail": "https://example.com/cover.jpg",
+            }
+
+            downloader.download("https://www.bilibili.com/video/BV11UwDzzEMN/")
+
+        ydl_opts = youtube_dl.call_args.args[0]
+        self.assertEqual(ydl_opts.get("cookiefile"), "/tmp/cookies.txt")
+
 
 class NoteGeneratorBilibiliFlowTest(unittest.TestCase):
     def setUp(self) -> None:

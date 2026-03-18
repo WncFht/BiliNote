@@ -23,6 +23,18 @@ class BilibiliDownloader(Downloader, ABC):
     def __init__(self):
         super().__init__()
 
+    def _resolve_cookiefile(self) -> Optional[str]:
+        cookies_path = Path(BILIBILI_COOKIES_FILE)
+        if not cookies_path.is_absolute():
+            cookies_path = Path(__file__).parent.parent.parent / BILIBILI_COOKIES_FILE
+
+        if cookies_path.exists():
+            logger.info(f"使用 cookies 文件: {cookies_path}")
+            return str(cookies_path)
+
+        logger.warning(f"B站 cookies 文件不存在: {cookies_path}，字幕获取可能失败")
+        return None
+
     def download(
         self,
         video_url: str,
@@ -52,6 +64,10 @@ class BilibiliDownloader(Downloader, ABC):
             'quiet': False,
         }
 
+        cookiefile = self._resolve_cookiefile()
+        if cookiefile:
+            ydl_opts['cookiefile'] = cookiefile
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=True)
             video_id = info.get("id")
@@ -69,6 +85,42 @@ class BilibiliDownloader(Downloader, ABC):
             video_id=video_id,
             raw_info=info,
             video_path=None  # ❗音频下载不包含视频路径
+        )
+
+    def fetch_metadata(self, video_url: str, output_dir: Union[str, None] = None) -> AudioDownloadResult:
+        """
+        仅获取视频元数据，不下载音频文件。
+        """
+        if output_dir is None:
+            output_dir = get_data_dir()
+        if not output_dir:
+            output_dir = self.cache_data
+        os.makedirs(output_dir, exist_ok=True)
+
+        fallback_video_id = extract_video_id(video_url, "bilibili")
+        ydl_opts = {
+            'skip_download': True,
+            'noplaylist': True,
+            'quiet': True,
+        }
+
+        cookiefile = self._resolve_cookiefile()
+        if cookiefile:
+            ydl_opts['cookiefile'] = cookiefile
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(video_url, download=False)
+
+        video_id = info.get("id") or fallback_video_id
+        return AudioDownloadResult(
+            file_path="",
+            title=info.get("title") or video_id,
+            duration=info.get("duration", 0),
+            cover_url=info.get("thumbnail"),
+            platform="bilibili",
+            video_id=video_id,
+            raw_info=info,
+            video_path=None,
         )
 
     def download_video(
@@ -101,6 +153,10 @@ class BilibiliDownloader(Downloader, ABC):
             'quiet': False,
             'merge_output_format': 'mp4',  # 确保合并成 mp4
         }
+
+        cookiefile = self._resolve_cookiefile()
+        if cookiefile:
+            ydl_opts['cookiefile'] = cookiefile
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=True)
@@ -142,7 +198,21 @@ class BilibiliDownloader(Downloader, ABC):
             langs = ['zh-Hans', 'zh', 'zh-CN', 'ai-zh', 'en', 'en-US']
 
         video_id = extract_video_id(video_url, "bilibili")
+        transcript = self._download_subtitles_via_ytdlp(
+            video_url=video_url,
+            output_dir=output_dir,
+            langs=langs,
+            video_id=video_id,
+        )
+        return transcript
 
+    def _download_subtitles_via_ytdlp(
+        self,
+        video_url: str,
+        output_dir: str,
+        langs: List[str],
+        video_id: str,
+    ) -> Optional[TranscriptResult]:
         ydl_opts = {
             'writesubtitles': True,
             'writeautomaticsub': True,
@@ -153,17 +223,9 @@ class BilibiliDownloader(Downloader, ABC):
             'quiet': True,
         }
 
-        # 添加 cookies 支持
-        cookies_path = Path(BILIBILI_COOKIES_FILE)
-        if not cookies_path.is_absolute():
-            # 相对于 backend 目录
-            cookies_path = Path(__file__).parent.parent.parent / BILIBILI_COOKIES_FILE
-
-        if cookies_path.exists():
-            ydl_opts['cookiefile'] = str(cookies_path)
-            logger.info(f"使用 cookies 文件: {cookies_path}")
-        else:
-            logger.warning(f"B站 cookies 文件不存在: {cookies_path}，字幕获取可能失败")
+        cookiefile = self._resolve_cookiefile()
+        if cookiefile:
+            ydl_opts['cookiefile'] = cookiefile
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

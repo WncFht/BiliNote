@@ -131,13 +131,21 @@ cd backend
 uv run bilinote-cli "https://www.bilibili.com/video/BV19CwVz7EAU"
 ```
 
+也支持一次处理多个 URL，并通过 `--jobs` 开启原生并发：
+
+```bash
+cd backend
+uv run bilinote-cli "https://www.bilibili.com/video/BV19CwVz7EAU" "https://www.bilibili.com/video/BV11UwDzzEMN" --jobs 2 --output "/Users/fanghaotian/Desktop/obsidian/视频"
+```
+
 常用参数：
 
 ```bash
 uv run bilinote-cli "<bilibili_url>" --style detailed
 uv run bilinote-cli "<bilibili_url>" --style concise
-uv run bilinote-cli "<bilibili_url>" --no-screenshot
-uv run bilinote-cli "<bilibili_url>" --output note_results/custom_note.md
+uv run bilinote-cli "<bilibili_url>" --screenshot
+uv run bilinote-cli "<bilibili_url>" --output "/Users/fanghaotian/Desktop/obsidian/视频"
+uv run bilinote-cli "<url1>" "<url2>" "<url3>" --jobs 3 --output "/Users/fanghaotian/Desktop/obsidian/视频"
 ```
 
 默认行为：
@@ -145,8 +153,13 @@ uv run bilinote-cli "<bilibili_url>" --output note_results/custom_note.md
 - provider 固定为当前本地配置里的 `openai`
 - model 固定为 `gpt-5.4`
 - 默认 `style=detailed`
-- 默认开启截图
-- 默认开启视频理解，采样间隔 `4` 秒，拼图 `3x3`
+- 默认关闭截图
+- 只有显式传入 `--screenshot` 时才会开启视频理解，采样间隔 `4` 秒，拼图 `3x3`
+- 默认输出目录是 `/Users/fanghaotian/Desktop/obsidian/视频`
+- 最终文件名从生成 Markdown 的 H1 标题推导
+- 多 URL 模式下默认串行，可通过 `--jobs N` 开启原生并发
+- 多 URL 模式下 `--output` 必须是目录，不能是单个 `.md` 文件
+- Bilibili 转写链路优先使用平台字幕；若字幕不可用，则直接下载音频做本地转写
 - 输出只保留 Markdown 笔记，不生成思维导图
 
 ## 🔐 配置与 API Key

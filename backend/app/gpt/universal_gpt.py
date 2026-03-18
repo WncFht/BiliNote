@@ -1,11 +1,10 @@
+from datetime import timedelta
+from typing import Callable, List, Optional
+
 from app.gpt.base import GPT
 from app.gpt.prompt_builder import generate_base_prompt
 from app.models.gpt_model import GPTSource
-from app.gpt.prompt import BASE_PROMPT, AI_SUM, SCREENSHOT, LINK
-from app.gpt.utils import fix_markdown
 from app.models.transcriber_model import TranscriptSegment
-from datetime import timedelta
-from typing import List
 
 
 class UniversalGPT(GPT):
@@ -28,8 +27,7 @@ class UniversalGPT(GPT):
     def ensure_segments_type(self, segments) -> List[TranscriptSegment]:
         return [TranscriptSegment(**seg) if isinstance(seg, dict) else seg for seg in segments]
 
-    def create_messages(self, segments: List[TranscriptSegment], **kwargs):
-
+    def create_input(self, segments: List[TranscriptSegment], **kwargs):
         content_text = generate_base_prompt(
             title=kwargs.get('title'),
             segment_text=self._build_segment_text(segments),
@@ -39,36 +37,124 @@ class UniversalGPT(GPT):
             extras=kwargs.get('extras'),
         )
 
-        # ⛳ 组装 content 数组，支持 text + image_url 混合
-        content = [{"type": "text", "text": content_text}]
-        video_img_urls = kwargs.get('video_img_urls', [])
+        content = [{"type": "input_text", "text": content_text}]
+        video_img_urls = kwargs.get('video_img_urls') or []
 
         for url in video_img_urls:
             content.append({
-                "type": "image_url",
-                "image_url": {
-                    "url": url,
-                    "detail": "auto"
-                }
+                "type": "input_image",
+                "image_url": url,
+                "detail": "auto",
             })
 
-        #  正确格式：整体包在一个 message 里，role + content array
-        messages = [{
+        return [{
             "role": "user",
-            "content": content
+            "content": content,
         }]
 
-        return messages
+    def create_messages(self, segments: List[TranscriptSegment], **kwargs):
+        return self.create_input(segments, **kwargs)
 
     def list_models(self):
         return self.client.models.list()
 
-    def summarize(self, source: GPTSource) -> str:
+    def _emit_progress(
+        self,
+        progress_callback: Optional[Callable[[str], None]],
+        message: str,
+    ) -> None:
+        if progress_callback:
+            progress_callback(message)
+
+    def _extract_response_text(self, response) -> str:
+        output_text = getattr(response, "output_text", None)
+        if output_text:
+            return output_text.strip()
+
+        parts = []
+        for item in getattr(response, "output", []) or []:
+            for content in getattr(item, "content", []) or []:
+                text = getattr(content, "text", None)
+                if text:
+                    parts.append(text)
+        return "".join(parts).strip()
+
+    def _summarize_with_responses_stream(
+        self,
+        response_input,
+        progress_callback: Optional[Callable[[str], None]] = None,
+    ) -> str:
+        chunks = []
+        generated_chars = 0
+        last_reported_chars = 0
+
+        self._emit_progress(progress_callback, "总结中：已连接响应流")
+        with self.client.responses.stream(
+            model=self.model,
+            input=response_input,
+            temperature=self.temperature,
+        ) as stream:
+            for event in stream:
+                event_type = getattr(event, "type", "")
+                if event_type == "response.in_progress":
+                    self._emit_progress(progress_callback, "总结中：模型正在生成")
+                    continue
+
+                if event_type == "response.output_text.delta":
+                    delta = getattr(event, "delta", "")
+                    if not delta:
+                        continue
+
+                    chunks.append(delta)
+                    generated_chars += len(delta)
+                    if generated_chars - last_reported_chars >= 400:
+                        last_reported_chars = generated_chars
+                        self._emit_progress(
+                            progress_callback,
+                            f"总结中：已生成约 {generated_chars} 字",
+                        )
+                    continue
+
+                if event_type == "response.completed":
+                    self._emit_progress(progress_callback, "总结中：响应完成")
+
+            try:
+                final_response = stream.get_final_response()
+            except Exception:
+                final_text = "".join(chunks).strip()
+                if final_text:
+                    return final_text
+                raise
+
+        final_text = "".join(chunks).strip()
+        if final_text:
+            return final_text
+        return self._extract_response_text(final_response)
+
+    def _summarize_with_responses_create(
+        self,
+        response_input,
+        progress_callback: Optional[Callable[[str], None]] = None,
+    ) -> str:
+        self._emit_progress(progress_callback, "总结中：已发送响应请求")
+        response = self.client.responses.create(
+            model=self.model,
+            input=response_input,
+            temperature=self.temperature,
+        )
+        self._emit_progress(progress_callback, "总结中：响应完成")
+        return self._extract_response_text(response)
+
+    def summarize(
+        self,
+        source: GPTSource,
+        progress_callback: Optional[Callable[[str], None]] = None,
+    ) -> str:
         self.screenshot = source.screenshot
         self.link = source.link
         source.segment = self.ensure_segments_type(source.segment)
 
-        messages = self.create_messages(
+        response_input = self.create_input(
             source.segment,
             title=source.title,
             tags=source.tags,
@@ -77,9 +163,14 @@ class UniversalGPT(GPT):
             style=source.style,
             extras=source.extras
         )
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=0.7
-        )
-        return response.choices[0].message.content.strip()
+
+        try:
+            return self._summarize_with_responses_stream(
+                response_input=response_input,
+                progress_callback=progress_callback,
+            )
+        except Exception:
+            return self._summarize_with_responses_create(
+                response_input=response_input,
+                progress_callback=progress_callback,
+            )

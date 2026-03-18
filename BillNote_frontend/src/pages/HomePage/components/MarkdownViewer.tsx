@@ -23,6 +23,7 @@ import { noteStyles } from '@/constant/note.ts'
 import { MarkdownHeader } from '@/pages/HomePage/components/MarkdownHeader.tsx'
 import TranscriptViewer from '@/pages/HomePage/components/transcriptViewer.tsx'
 import MarkmapEditor from '@/pages/HomePage/components/MarkmapComponent.tsx'
+import { buildTaskProgressDisplay } from '@/lib/taskProgress.ts'
 
 interface VersionNote {
   ver_id: string
@@ -57,11 +58,13 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
   const getCurrentTask = useTaskStore.getState().getCurrentTask
   const currentTask = useTaskStore(state => state.getCurrentTask())
   const taskStatus = currentTask?.status || 'PENDING'
+  const taskMessage = currentTask?.message || ''
   const retryTask = useTaskStore.getState().retryTask
   const isMultiVersion = Array.isArray(currentTask?.markdown)
   const [showTranscribe, setShowTranscribe] = useState(false)
   const [viewMode, setViewMode] = useState<'map' | 'preview'>('preview')
   const svgRef = useRef<SVGSVGElement>(null)
+  const progressDisplay = buildTaskProgressDisplay(taskStatus, taskMessage)
   // 多版本内容处理
   useEffect(() => {
     if (!currentTask) return
@@ -147,9 +150,12 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
       <div className="flex h-screen w-full flex-col items-center justify-center space-y-4 text-neutral-500">
         <StepBar steps={steps} currentStep={taskStatus} />
         <Loading className="h-5 w-5" />
-        <div className="text-center text-sm">
-          <p className="text-lg font-bold">正在生成笔记，请稍候…</p>
-          <p className="mt-2 text-xs text-neutral-500">这可能需要几秒钟时间，取决于视频长度</p>
+        <div className="w-full max-w-xl text-center text-sm">
+          <p className="text-lg font-bold">{progressDisplay.title}</p>
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 shadow-sm">
+            {progressDisplay.detail}
+          </div>
+          <p className="mt-3 text-xs text-neutral-500">{progressDisplay.hint}</p>
         </div>
       </div>
     )
@@ -173,7 +179,9 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
         <Error />
         <div className="text-center">
           <p className="text-lg font-bold text-red-500">笔记生成失败</p>
-          <p className="mt-2 mb-2 text-xs text-red-400">请检查后台或稍后再试</p>
+          <p className="mt-2 mb-2 text-xs text-red-400">
+            {taskMessage || '请检查后台或稍后再试'}
+          </p>
 
           <Button onClick={() => retryTask(currentTask.id)} size="lg">
             重试

@@ -1,11 +1,13 @@
+import toast from 'react-hot-toast'
+import { v4 as uuidv4 } from 'uuid'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { delete_task, generateNote } from '@/services/note.ts'
-import { v4 as uuidv4 } from 'uuid'
-import toast from 'react-hot-toast'
+
+import { generateNote, delete_task } from '@/services/note.ts'
+import type { TaskProcessingStatus } from '@/lib/taskProgress.ts'
 
 
-export type TaskStatus = 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILD'
+export type TaskStatus = TaskProcessingStatus
 
 export interface AudioMeta {
   cover_url: string
@@ -42,6 +44,7 @@ export interface Task {
   markdown: string|Markdown [] //为了兼容之前的笔记
   transcript: Transcript
   status: TaskStatus
+  message?: string
   audioMeta: AudioMeta
   createdAt: string
   formData: {
@@ -81,6 +84,7 @@ export const useTaskStore = create<TaskStore>()(
               formData: formData,
               id: taskId,
               status: 'PENDING',
+              message: '任务排队中',
               markdown: '',
               platform: platform,
               transcript: {
