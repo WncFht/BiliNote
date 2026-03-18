@@ -71,7 +71,7 @@ class NoteGenerator:
         self.model_size: str = "base"
         self.device: Optional[str] = None
         self.transcriber_type: str = os.getenv("TRANSCRIBER_TYPE", "fast-whisper")
-        self.transcriber: Transcriber = self._init_transcriber()
+        self.transcriber: Optional[Transcriber] = None
         self.video_path: Optional[Path] = None
         self.video_img_urls=[]
         self.progress_callback: Optional[Callable[[str, Optional[str]], None]] = None
@@ -259,6 +259,11 @@ class NoteGenerator:
 
         logger.info(f"使用转写器：{self.transcriber_type}")
         return get_transcriber(transcriber_type=self.transcriber_type)
+
+    def _get_transcriber(self) -> Transcriber:
+        if self.transcriber is None:
+            self.transcriber = self._init_transcriber()
+        return self.transcriber
 
     def _get_gpt(self, model_name: Optional[str], provider_id: Optional[str]) -> GPT:
         """
@@ -760,11 +765,12 @@ class NoteGenerator:
         # 调用转写器
         try:
             logger.info("开始转写音频")
+            transcriber = self._get_transcriber()
             transcript = self._run_with_status_heartbeat(
                 task_id=task_id,
                 status=status_phase,
                 heartbeat_message="本地转写进行中",
-                operation=lambda: self.transcriber.transcript(file_path=audio_file),
+                operation=lambda: transcriber.transcript(file_path=audio_file),
             )
             transcript_cache_file.write_text(json.dumps(asdict(transcript), ensure_ascii=False, indent=2), encoding="utf-8")
             logger.info(f"转写并缓存成功 ({transcript_cache_file})")

@@ -50,6 +50,62 @@ class BilibiliDownloaderSubtitleFallbackTest(unittest.TestCase):
         self.assertEqual(ydl_opts.get("cookiefile"), "/tmp/cookies.txt")
 
 
+class NoteGeneratorLazyTranscriberInitTest(unittest.TestCase):
+    def test_generate_with_bilibili_subtitles_does_not_initialize_transcriber(self) -> None:
+        fake_downloader = Mock()
+        fake_downloader.fetch_metadata.return_value = AudioDownloadResult(
+            file_path="",
+            title="测试标题",
+            duration=12.0,
+            cover_url=None,
+            platform="bilibili",
+            video_id="BV11UwDzzEMN",
+            raw_info={"tags": ["测试"]},
+        )
+        fake_downloader.download_subtitles.return_value = TranscriptResult(
+            language="zh",
+            full_text="测试字幕",
+            segments=[TranscriptSegment(start=0.0, end=1.0, text="测试字幕")],
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            note_output_dir = Path(temp_dir)
+            with (
+                patch.object(NoteGenerator, "_init_transcriber", return_value=Mock()) as init_transcriber,
+                patch("app.services.note.NOTE_OUTPUT_DIR", note_output_dir),
+                patch.object(NoteGenerator, "_get_downloader", return_value=fake_downloader),
+                patch.object(NoteGenerator, "_get_gpt", return_value=Mock()),
+                patch.object(
+                    NoteGenerator,
+                    "_download_media",
+                    side_effect=AssertionError("should not download audio when subtitles are available"),
+                ),
+                patch.object(NoteGenerator, "_summarize_text", return_value="# 测试笔记\n"),
+                patch.object(NoteGenerator, "_save_metadata"),
+                patch.object(NoteGenerator, "_update_status"),
+            ):
+                generator = NoteGenerator()
+                result = generator.generate(
+                    video_url="https://www.bilibili.com/video/BV11UwDzzEMN/",
+                    platform="bilibili",
+                    task_id="task-1",
+                    model_name="gpt-5.4",
+                    provider_id="openai",
+                    link=False,
+                    screenshot=False,
+                    _format=[],
+                    style="detailed",
+                    extras=None,
+                    output_path=temp_dir,
+                    video_understanding=False,
+                    video_interval=4,
+                    grid_size=[],
+                )
+
+        self.assertIsNotNone(result)
+        init_transcriber.assert_not_called()
+
+
 class NoteGeneratorBilibiliFlowTest(unittest.TestCase):
     def setUp(self) -> None:
         init_patcher = patch.object(NoteGenerator, "_init_transcriber", return_value=Mock())
@@ -198,6 +254,28 @@ class NoteGeneratorBilibiliFlowTest(unittest.TestCase):
             "本地转写进行中",
             [call.kwargs.get("message") for call in transcribing_calls],
         )
+
+    def test_transcribe_audio_initializes_transcriber_on_demand(self) -> None:
+        lazy_transcriber = Mock()
+        lazy_transcriber.transcript.return_value = TranscriptResult(
+            language="zh",
+            full_text="测试字幕",
+            segments=[TranscriptSegment(start=0.0, end=1.0, text="测试字幕")],
+        )
+        self.generator.transcriber = None
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            transcript_cache_file = Path(temp_dir) / "task-1_transcript.json"
+            with patch.object(self.generator, "_init_transcriber", return_value=lazy_transcriber) as init_transcriber:
+                result = self.generator._transcribe_audio(
+                    audio_file="downloaded.mp3",
+                    transcript_cache_file=transcript_cache_file,
+                    status_phase=TaskStatus.TRANSCRIBING,
+                )
+
+        self.assertEqual(result.full_text, "测试字幕")
+        init_transcriber.assert_called_once_with()
+        lazy_transcriber.transcript.assert_called_once_with(file_path="downloaded.mp3")
 
 
 if __name__ == "__main__":
