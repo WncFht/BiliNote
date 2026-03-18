@@ -2,6 +2,7 @@ import mlx_whisper
 from pathlib import Path
 import os
 import platform
+from threading import Lock
 from huggingface_hub import snapshot_download
 
 from app.decorators.timeit import timeit
@@ -14,6 +15,8 @@ from events import transcription_finished
 logger = get_logger(__name__)
 
 class MLXWhisperTranscriber(Transcriber):
+    _transcribe_lock = Lock()
+
     def __init__(
             self,
             model_size: str = "base"
@@ -49,11 +52,13 @@ class MLXWhisperTranscriber(Transcriber):
     @timeit
     def transcript(self, file_path: str) -> TranscriptResult:
         try:
-            # 使用 MLX Whisper 进行转录
-            result = mlx_whisper.transcribe(
-                file_path,
-                path_or_hf_repo=f"{self.model_name}"
-            )
+            # MLX 在这个调用层级不是线程安全的；同进程内串行化转写，
+            # 保留下载/GPT 等其他阶段的并发能力。
+            with self._transcribe_lock:
+                result = mlx_whisper.transcribe(
+                    file_path,
+                    path_or_hf_repo=f"{self.model_name}"
+                )
             
             # 转换为标准格式
             segments = []
