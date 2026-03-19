@@ -19,6 +19,7 @@ import { useEffect } from 'react'
 import { systemCheck } from '@/services/system.ts'
 import { useCheckBackend } from '@/hooks/useCheckBackend.ts'
 import BackendInitDialog from '@/components/BackendInitDialog'
+import SettingsIndex from '@/pages/SettingPage/SettingsIndex.tsx'
 
 function App() {
   useTaskPolling(3000) // 每 3 秒轮询一次
@@ -48,7 +49,7 @@ function App() {
           <Route path="/" element={<Index />}>
             <Route index element={<HomePage />} />
             <Route path="settings" element={<SettingPage />}>
-              <Route index element={<Navigate to="model" replace />} />
+              <Route index element={<SettingsIndex />} />
               <Route path="model" element={<Model />}>
                 <Route path="new" element={<ProviderForm isCreate />} />
                 <Route path=":id" element={<ProviderForm />} />

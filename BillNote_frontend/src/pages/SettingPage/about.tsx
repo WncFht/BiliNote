@@ -14,11 +14,11 @@ export default function AboutPage() {
     'https://common-1304618721.cos.ap-chengdu.myqcloud.com/20250504103625.png',
   ]
   return (
-    <ScrollArea className={'h-full overflow-y-auto bg-white'}>
-      <div className="container mx-auto px-4 py-12">
+    <ScrollArea className="h-full overflow-y-auto bg-white">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
         {/* Hero Section */}
-        <div className="mb-16 flex flex-col items-center justify-center text-center">
-          <div className="mb-4 flex items-center gap-4">
+        <div className="mb-12 flex flex-col items-center justify-center text-center sm:mb-16">
+          <div className="mb-4 flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
             <img
               src={logo}
               alt="BiliNote Logo"
@@ -26,9 +26,9 @@ export default function AboutPage() {
               height={50}
               className="rounded-lg"
             />
-            <h1 className="text-4xl font-bold">BiliNote v1.8.1</h1>
+            <h1 className="text-3xl font-bold sm:text-4xl">BiliNote v1.8.1</h1>
           </div>
-          <p className="text-muted-foreground mb-6 text-xl italic">
+          <p className="text-muted-foreground mb-6 max-w-2xl text-base italic sm:text-xl">
             AI 视频笔记生成工具 让 AI 为你的视频做笔记
           </p>
 
@@ -40,20 +40,20 @@ export default function AboutPage() {
             <Badge variant="secondary">Active</Badge>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-4">
-            <Button asChild>
+          <div className="flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:gap-4">
+            <Button asChild className="w-full sm:w-auto">
               <a href="https://www.bilinote.app" target="_blank">
                 <ExternalLink className="mr-2 h-4 w-4" />
                 体验 BiliNote
               </a>
             </Button>
-            <Button variant="outline" asChild>
+            <Button variant="outline" asChild className="w-full sm:w-auto">
               <a href="https://github.com/JefferyHcool/BiliNote" target="_blank">
                 <Github className="mr-2 h-4 w-4" />
                 GitHub 仓库
               </a>
             </Button>
-            <Button variant="outline" asChild>
+            <Button variant="outline" asChild className="w-full sm:w-auto">
               <a href="https://github.com/JefferyHcool/BiliNote/releases" target="_blank">
                 <Download className="mr-2 h-4 w-4" />
                 下载桌面版
@@ -63,10 +63,10 @@ export default function AboutPage() {
         </div>
 
         {/* Project Introduction */}
-        <section className="mb-16">
-          <h2 className="mb-6 text-center text-3xl font-bold">✨ 项目简介</h2>
+        <section className="mb-12 sm:mb-16">
+          <h2 className="mb-6 text-center text-2xl font-bold sm:text-3xl">✨ 项目简介</h2>
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-lg">
+            <p className="text-base leading-7 sm:text-lg">
               BiliNote 是一个开源的 AI 视频笔记助手，支持通过哔哩哔哩、YouTube、抖音等视频链接，
               自动提取内容并生成结构清晰、重点明确的 Markdown
               格式笔记。支持插入截图、原片跳转等功能。
@@ -75,8 +75,8 @@ export default function AboutPage() {
         </section>
 
         {/* Features Section */}
-        <section className="mb-16">
-          <h2 className="mb-8 text-center text-3xl font-bold">🔧 功能特性</h2>
+        <section className="mb-12 sm:mb-16">
+          <h2 className="mb-8 text-center text-2xl font-bold sm:text-3xl">🔧 功能特性</h2>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[
               { title: '多平台支持', desc: '支持 Bilibili、YouTube、本地视频、抖音等多个平台' },
@@ -100,8 +100,8 @@ export default function AboutPage() {
         </section>
 
         {/* Screenshots Section */}
-        <section className="mb-16">
-          <h2 className="mb-8 text-center text-3xl font-bold">📸 截图预览</h2>
+        <section className="mb-12 sm:mb-16">
+          <h2 className="mb-8 text-center text-2xl font-bold sm:text-3xl">📸 截图预览</h2>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {images.map(num => (
               <div key={num} className="overflow-hidden rounded-lg border shadow-sm">
@@ -118,8 +118,8 @@ export default function AboutPage() {
         </section>
 
         {/* Quick Start Section */}
-        <section className="mb-16">
-          <h2 className="mb-8 text-center text-3xl font-bold">🚀 快速开始</h2>
+        <section className="mb-12 sm:mb-16">
+          <h2 className="mb-8 text-center text-2xl font-bold sm:text-3xl">🚀 快速开始</h2>
           <Tabs defaultValue="manual" className="mx-auto max-w-3xl">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="manual">手动安装</TabsTrigger>
@@ -193,8 +193,8 @@ export default function AboutPage() {
         </section>
 
         {/* Community Section */}
-        <section className="mb-16">
-          <h2 className="mb-8 text-center text-3xl font-bold">联系和加入社区</h2>
+        <section className="mb-12 sm:mb-16">
+          <h2 className="mb-8 text-center text-2xl font-bold sm:text-3xl">联系和加入社区</h2>
           <div className="mx-auto max-w-3xl">
             <div className="flex flex-col items-center justify-center gap-8">
               <div className="text-center">
@@ -213,7 +213,7 @@ export default function AboutPage() {
 
         {/* License Section */}
         <section className="mb-8 text-center">
-          <h2 className="mb-4 text-3xl font-bold">📜 License</h2>
+          <h2 className="mb-4 text-2xl font-bold sm:text-3xl">📜 License</h2>
           <p>MIT License</p>
         </section>
 
