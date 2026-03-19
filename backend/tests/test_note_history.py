@@ -84,6 +84,57 @@ class NoteHistoryTest(unittest.TestCase):
         self.assertEqual(payload["data"][1]["status"], "FAILED")
         self.assertEqual(payload["data"][1]["message"], "boom")
 
+    def test_serialize_task_history_entry_reads_legacy_split_result_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            Path(temp_dir, "task-legacy_audio.json").write_text(
+                json.dumps(
+                    {
+                        "cover_url": "https://example.com/cover.jpg",
+                        "duration": 12,
+                        "file_path": "/tmp/audio.mp3",
+                        "platform": "bilibili",
+                        "raw_info": {"score": float("nan")},
+                        "title": "Legacy title",
+                        "video_id": "BV-legacy",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            Path(temp_dir, "task-legacy_transcript.json").write_text(
+                json.dumps(
+                    {
+                        "full_text": "legacy transcript",
+                        "language": "zh",
+                        "raw": None,
+                        "segments": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            Path(temp_dir, "task-legacy_markdown.md").write_text(
+                "# Legacy title\n\nLegacy body",
+                encoding="utf-8",
+            )
+            Path(temp_dir, "task-legacy.status.json").write_text(
+                json.dumps({"status": "SUCCESS"}),
+                encoding="utf-8",
+            )
+
+            task_row = SimpleNamespace(
+                task_id="task-legacy",
+                platform="bilibili",
+                created_at=datetime(2026, 3, 18, 10, 17, 52),
+            )
+
+            with patch("app.routers.note.NOTE_OUTPUT_DIR", temp_dir):
+                payload = serialize_task_history_entry(task_row)
+
+        self.assertEqual(payload["status"], "SUCCESS")
+        self.assertEqual(payload["result"]["audio_meta"]["title"], "Legacy title")
+        self.assertEqual(payload["result"]["transcript"]["full_text"], "legacy transcript")
+        self.assertEqual(payload["result"]["markdown"], "# Legacy title\n\nLegacy body")
+        self.assertIsNone(payload["result"]["audio_meta"]["raw_info"]["score"])
+
     def test_delete_task_removes_cached_artifacts_for_task_id(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             for suffix in [

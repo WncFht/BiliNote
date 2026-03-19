@@ -1,6 +1,7 @@
 # app/routers/note.py
 import ipaddress
 import json
+import math
 import os
 import re
 import socket
@@ -183,12 +184,54 @@ def _load_json_file(path: str):
         return None
 
 
+def _load_text_file(path: str):
+    if not os.path.exists(path):
+        return None
+
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            content = file.read().strip()
+    except OSError:
+        return None
+
+    return content or None
+
+
+def _load_legacy_task_result(task_id: str):
+    audio_meta = _load_json_file(os.path.join(NOTE_OUTPUT_DIR, f"{task_id}_audio.json"))
+    transcript = _load_json_file(os.path.join(NOTE_OUTPUT_DIR, f"{task_id}_transcript.json"))
+    markdown = _load_text_file(os.path.join(NOTE_OUTPUT_DIR, f"{task_id}_markdown.md"))
+
+    if not any((audio_meta, transcript, markdown)):
+        return None
+
+    return {
+        "markdown": markdown or "",
+        "transcript": transcript or {},
+        "audio_meta": audio_meta or {},
+    }
+
+
+def _json_safe_value(value):
+    if isinstance(value, dict):
+        return {key: _json_safe_value(item) for key, item in value.items()}
+
+    if isinstance(value, list):
+        return [_json_safe_value(item) for item in value]
+
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+
+    return value
+
+
 def load_task_snapshot(task_id: str):
     status_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.status.json")
     result_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.json")
 
     status_content = _load_json_file(status_path) or {}
-    result_content = _load_json_file(result_path)
+    result_content = _load_json_file(result_path) or _load_legacy_task_result(task_id)
+    result_content = _json_safe_value(result_content)
 
     status = status_content.get("status")
     message = status_content.get("message", "")
