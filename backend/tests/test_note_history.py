@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app.routers.note import get_task_history, serialize_task_history_entry
+from app.routers.note import RecordRequest, delete_task, get_task_history, serialize_task_history_entry
 
 
 class NoteHistoryTest(unittest.TestCase):
@@ -83,6 +83,28 @@ class NoteHistoryTest(unittest.TestCase):
         self.assertEqual(payload["data"][1]["task_id"], "task-2")
         self.assertEqual(payload["data"][1]["status"], "FAILED")
         self.assertEqual(payload["data"][1]["message"], "boom")
+
+    def test_delete_task_removes_cached_artifacts_for_task_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for suffix in [
+                ".json",
+                ".status.json",
+                "_audio.json",
+                "_transcript.json",
+                "_markdown.md",
+            ]:
+                (Path(temp_dir) / f"task-1{suffix}").write_text("{}", encoding="utf-8")
+
+            with patch("app.routers.note.NOTE_OUTPUT_DIR", temp_dir), patch(
+                "app.routers.note.delete_task_by_id", return_value=1
+            ):
+                response = delete_task(RecordRequest(task_id="task-1"))
+
+            payload = json.loads(response.body)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(payload["code"], 0)
+            self.assertFalse((Path(temp_dir) / "task-1.json").exists())
+            self.assertFalse((Path(temp_dir) / "task-1.status.json").exists())
 
 
 if __name__ == "__main__":

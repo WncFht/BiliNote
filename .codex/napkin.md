@@ -21,9 +21,11 @@
 ## Domain Behavior Guardrails
 1. **[2026-03-19] Web history now hydrates from backend task history**
    Do instead: when different devices show different note histories, inspect `/api/task_history` and frontend `mergeHydratedTasks` before blaming local Zustand persistence alone.
-2. **[2026-03-19] Local runtime uses split logs**
+2. **[2026-03-19] Task deletion must key by `task_id`**
+   Do instead: send `task_id` from the frontend delete flow and remove cached `note_results` artifacts by `task_id`; `video_id/platform` is only a legacy fallback.
+3. **[2026-03-19] Local runtime uses split logs**
    Do instead: treat `backend.local.log` and `frontend.local.log` as process stdout/stderr, and `backend/logs/app.log` as structured backend app logging.
-3. **[2026-03-19] Web note generation must keep image-input mode disabled until payload handling is redesigned**
+4. **[2026-03-19] Web note generation must keep image-input mode disabled until payload handling is redesigned**
    Do instead: normalize web requests to `screenshot=False`, `video_understanding=False`, `grid_size=[]`, and strip `screenshot` from requested formats; keep screenshot mode explicit-only in CLI.
 
 ## User Directives

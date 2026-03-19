@@ -15,7 +15,7 @@ from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, Up
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 
-from app.db.video_task_dao import list_video_tasks
+from app.db.video_task_dao import delete_task_by_id, delete_task_by_video, list_video_tasks
 from app.enmus.exception import NoteErrorEnum
 from app.enmus.note_enums import DownloadQuality
 from app.enmus.task_status_enums import TaskStatus
@@ -34,8 +34,9 @@ BLOCKED_PROXY_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.
 
 
 class RecordRequest(BaseModel):
-    video_id: str
-    platform: str
+    video_id: Optional[str] = None
+    platform: Optional[str] = None
+    task_id: Optional[str] = None
 
 
 class VideoRequest(BaseModel):
@@ -205,6 +206,25 @@ def load_task_snapshot(task_id: str):
     }
 
 
+def delete_task_artifacts(task_id: str) -> int:
+    removed = 0
+    artifact_names = [
+        f"{task_id}.json",
+        f"{task_id}.status.json",
+        f"{task_id}_audio.json",
+        f"{task_id}_transcript.json",
+        f"{task_id}_markdown.md",
+    ]
+
+    for artifact_name in artifact_names:
+        artifact_path = Path(NOTE_OUTPUT_DIR) / artifact_name
+        if artifact_path.exists():
+            artifact_path.unlink()
+            removed += 1
+
+    return removed
+
+
 def serialize_task_history_entry(task_row) -> dict:
     snapshot = load_task_snapshot(task_row.task_id)
     created_at = task_row.created_at.isoformat() if getattr(task_row, "created_at", None) else ""
@@ -263,9 +283,16 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
 @router.post('/delete_task')
 def delete_task(data: RecordRequest):
     try:
-        # TODO: 待持久化完成
-        # NoteGenerator().delete_note(video_id=data.video_id, platform=data.platform)
-        return R.success(msg='删除成功')
+        if data.task_id:
+            delete_task_by_id(data.task_id)
+            delete_task_artifacts(data.task_id)
+            return R.success(msg='删除成功')
+
+        if data.video_id and data.platform:
+            delete_task_by_video(data.video_id, data.platform)
+            return R.success(msg='删除成功')
+
+        return R.error(msg='缺少 task_id 或 video_id/platform', code=400, status_code=400)
     except Exception as e:
         return R.error(msg=e, status_code=500)
 

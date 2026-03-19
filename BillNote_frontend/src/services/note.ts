@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { buildDeleteTaskPayload, type DeleteTaskPayload } from '@/lib/deleteTaskRequest.ts'
 import type { ServerHistoryItem } from '@/lib/historySync.ts'
 import type { TaskStatusResponsePayload } from '@/lib/taskProgress.ts'
 import { normalizeWebGenerateNotePayload } from '@/lib/noteRequest.ts'
@@ -47,17 +48,13 @@ export const generateNote = async (data: {
   }
 }
 
-export const delete_task = async ({ video_id, platform }) => {
+export const delete_task = async (payload: DeleteTaskPayload) => {
   try {
-    const data = {
-      video_id,
-      platform,
-    }
+    const data = buildDeleteTaskPayload(payload)
     const res = await request.post('/delete_task', data)
 
-
-      toast.success('任务已成功删除')
-      return res
+    toast.success('任务已成功删除')
+    return res
   } catch (e) {
     toast.error('请求异常，删除任务失败')
     console.error('❌ 删除任务失败:', e)
