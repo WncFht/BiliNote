@@ -31,6 +31,12 @@ test('settings page metadata marks root as hub and details as back-navigable', (
     description: '查看支持平台与 Cookie 设置',
     backToHub: true,
   })
+
+  assert.deepEqual(getSettingsPageMeta('/settings/about'), {
+    title: '设置中心',
+    description: '浏览配置摘要与说明',
+    backToHub: false,
+  })
 })
 
 test('settings hub cards expose readable summaries and stable destinations', () => {
@@ -41,16 +47,14 @@ test('settings hub cards expose readable summaries and stable destinations', () 
     downloadPlatformCount: 4,
   })
 
-  assert.equal(cards.length, 3)
+  assert.equal(cards.length, 2)
   assert.deepEqual(cards.map(card => card.path), [
     '/settings/model',
     '/settings/download',
-    '/settings/about',
   ])
   assert.match(cards[0].summary, /3/)
   assert.match(cards[0].detail, /2/)
   assert.match(cards[1].summary, /4/)
-  assert.match(cards[2].summary, /BiliNote/)
 })
 
 test('settings hub cards fall back to neutral copy when data is missing', () => {

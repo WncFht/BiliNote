@@ -79,13 +79,6 @@ const SettingLayout = ({ Menu }: ISettingLayoutProps) => {
                 返回设置中心
               </Link>
             )}
-            <Link
-              to="/settings/about"
-              className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-700 shadow-sm"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              查看说明
-            </Link>
           </div>
         </header>
 

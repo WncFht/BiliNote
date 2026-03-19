@@ -1,7 +1,7 @@
 import { MOBILE_HOME_BREAKPOINT } from './homeLayout.ts'
 
 export interface SettingsHubCard {
-  id: 'model' | 'download' | 'about'
+  id: 'model' | 'download'
   title: string
   summary: string
   detail: string
@@ -32,14 +32,6 @@ export function getSettingsPageMeta(pathname: string) {
     return {
       title: '下载配置',
       description: '查看支持平台与 Cookie 设置',
-      backToHub: true,
-    }
-  }
-
-  if (pathname.startsWith('/settings/about')) {
-    return {
-      title: '关于',
-      description: '阅读项目说明、截图与链接',
       backToHub: true,
     }
   }
@@ -78,13 +70,6 @@ export function buildSettingsHubCards({
           : '支持平台将在这里显示',
       detail: '进入后查看每个平台的下载器配置与编辑入口',
       path: '/settings/download',
-    },
-    {
-      id: 'about',
-      title: '关于',
-      summary: '阅读 BiliNote 项目说明、版本信息与外部链接',
-      detail: '查看功能简介、截图预览、快速开始和社区入口',
-      path: '/settings/about',
     },
   ]
 }

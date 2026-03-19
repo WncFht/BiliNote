@@ -1,4 +1,4 @@
-import { BotMessageSquare, ChevronRight, HardDriveDownload, Info } from 'lucide-react'
+import { BotMessageSquare, ChevronRight, HardDriveDownload } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge.tsx'
@@ -11,13 +11,11 @@ import { cn } from '@/lib/utils.ts'
 const cardIcons = {
   model: BotMessageSquare,
   download: HardDriveDownload,
-  about: Info,
 } as const
 
 const cardAccents = {
   model: 'from-sky-100 via-white to-blue-50 text-sky-700',
   download: 'from-emerald-100 via-white to-green-50 text-emerald-700',
-  about: 'from-amber-100 via-white to-orange-50 text-amber-700',
 } as const
 
 const SettingsHub = () => {

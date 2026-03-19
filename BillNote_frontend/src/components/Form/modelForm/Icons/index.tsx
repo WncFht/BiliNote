@@ -1,29 +1,35 @@
-import * as Icons from '@lobehub/icons'
-import CustomLogo from '@/assets/customAI-small.png'
+import { getProviderBadge } from '@/lib/providerLogo.ts'
+import { cn } from '@/lib/utils.ts'
 
 interface AILogoProps {
   name: string // 图标名称（区分大小写！如 OpenAI、DeepSeek）
-  style?: 'Color' | 'Text' | 'Outlined' | 'Glyph'
   size?: number
 }
 
-const AILogo = ({ name, style = 'Color', size = 24 }: AILogoProps) => {
-  const Icon = Icons[name as keyof typeof Icons]
-  if (!Icon) {
-    console.error(`❌ 图标组件不存在: ${name}`)
-    return (
-      <span style={{ fontSize: size }}>
-        <img src={CustomLogo} alt="CustomLogo" style={{ width: size, height: size }} />
-      </span>
-    )
-  }
+const toneClassNames = {
+  amber: 'bg-amber-100 text-amber-700',
+  emerald: 'bg-emerald-100 text-emerald-700',
+  orange: 'bg-orange-100 text-orange-700',
+  sky: 'bg-sky-100 text-sky-700',
+  slate: 'bg-slate-200 text-slate-700',
+  violet: 'bg-violet-100 text-violet-700',
+} as const
 
-  const Variant = Icon[style as keyof typeof Icon]
-  if (!Variant) {
-    return <Icon size={size} />
-  }
+const AILogo = ({ name, size = 24 }: AILogoProps) => {
+  const badge = getProviderBadge(name)
 
-  return <Variant size={size} />
+  return (
+    <span
+      aria-label={name || 'AI'}
+      className={cn(
+        'inline-flex items-center justify-center rounded-xl text-[10px] font-semibold tracking-[0.08em]',
+        toneClassNames[badge.tone]
+      )}
+      style={{ width: size, height: size }}
+    >
+      {badge.label}
+    </span>
+  )
 }
 
 export default AILogo

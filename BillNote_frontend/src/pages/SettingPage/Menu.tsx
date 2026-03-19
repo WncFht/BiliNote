@@ -1,7 +1,6 @@
 import {
   BotMessageSquare,
   HardDriveDownload,
-  Info,
 } from 'lucide-react'
 import MenuBar, { IMenuProps } from '@/pages/SettingPage/components/menuBar.tsx'
 
@@ -34,12 +33,6 @@ const Menu = () => {
     //   icon: <SquareChevronRight />,
     //   path: '/settings/prompt',
     // },
-    {
-      id: 'about',
-      name: '关于',
-      icon: <Info />,
-      path: '/settings/about',
-    },
     // {
     //   id: 'other',
     //   name: '其他配置',

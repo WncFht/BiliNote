@@ -1,22 +1,29 @@
 import './App.css'
-import { HomePage } from './pages/HomePage/Home.tsx'
 import { useTaskPolling } from '@/hooks/useTaskPolling.ts'
-import SettingPage from './pages/SettingPage/index.tsx'
+import { Suspense, lazy, useEffect } from 'react'
 import { BrowserRouter, Routes } from 'react-router-dom'
 import { Route } from 'react-router-dom'
 import Index from '@/pages/Index.tsx'
-import NotFoundPage from '@/pages/NotFoundPage'
-import Model from '@/pages/SettingPage/Model.tsx'
-import ProviderForm from '@/components/Form/modelForm/Form.tsx'
-import AboutPage from '@/pages/SettingPage/about.tsx'
-import Downloader from '@/pages/SettingPage/Downloader.tsx'
-import DownloaderForm from '@/components/Form/DownloaderForm/Form.tsx'
-import { useEffect } from 'react'
 import { systemCheck } from '@/services/system.ts'
 import { useCheckBackend } from '@/hooks/useCheckBackend.ts'
 import BackendInitDialog from '@/components/BackendInitDialog'
-import SettingsIndex from '@/pages/SettingPage/SettingsIndex.tsx'
 import { useTaskStore } from '@/store/taskStore'
+
+import { HomePage } from './pages/HomePage/Home.tsx'
+
+const SettingPage = lazy(() => import('./pages/SettingPage/index.tsx'))
+const Model = lazy(() => import('./pages/SettingPage/Model.tsx'))
+const ProviderForm = lazy(() => import('@/components/Form/modelForm/Form.tsx'))
+const Downloader = lazy(() => import('./pages/SettingPage/Downloader.tsx'))
+const DownloaderForm = lazy(() => import('@/components/Form/DownloaderForm/Form.tsx'))
+const SettingsIndex = lazy(() => import('@/pages/SettingPage/SettingsIndex.tsx'))
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+
+const RouteLoader = () => (
+  <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_55%,#f8fafc_100%)] px-6 text-center text-sm text-neutral-500">
+    正在载入页面…
+  </div>
+)
 
 function App() {
   useTaskPolling(3000) // 每 3 秒轮询一次
@@ -44,24 +51,25 @@ function App() {
   return (
     <>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />}>
-            <Route index element={<HomePage />} />
-            <Route path="settings" element={<SettingPage />}>
-              <Route index element={<SettingsIndex />} />
-              <Route path="model" element={<Model />}>
-                <Route path="new" element={<ProviderForm isCreate />} />
-                <Route path=":id" element={<ProviderForm />} />
+        <Suspense fallback={<RouteLoader />}>
+          <Routes>
+            <Route path="/" element={<Index />}>
+              <Route index element={<HomePage />} />
+              <Route path="settings" element={<SettingPage />}>
+                <Route index element={<SettingsIndex />} />
+                <Route path="model" element={<Model />}>
+                  <Route path="new" element={<ProviderForm isCreate />} />
+                  <Route path=":id" element={<ProviderForm />} />
+                </Route>
+                <Route path="download" element={<Downloader />}>
+                  <Route path=":id" element={<DownloaderForm />} />
+                </Route>
+                <Route path="*" element={<NotFoundPage />} />
               </Route>
-              <Route path="download" element={<Downloader />}>
-                <Route path=":id" element={<DownloaderForm />} />
-              </Route>
-              <Route path="about" element={<AboutPage />}></Route>
               <Route path="*" element={<NotFoundPage />} />
             </Route>
-            <Route path="*" element={<NotFoundPage />} />
-          </Route>
-        </Routes>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </>
   )
