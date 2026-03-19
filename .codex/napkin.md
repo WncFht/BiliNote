@@ -23,15 +23,19 @@
    Do instead: when different devices show different note histories, inspect `/api/task_history` and frontend `mergeHydratedTasks` before blaming local Zustand persistence alone.
 2. **[2026-03-19] Task deletion must key by `task_id`**
    Do instead: send `task_id` from the frontend delete flow and remove cached `note_results` artifacts by `task_id`; `video_id/platform` is only a legacy fallback.
-3. **[2026-03-19] Mobile home performance depends on deferred preview assets**
-   Do instead: keep `MarkdownViewer`, markmap, and code-highlighting on lazy chunks so phone users do not download preview tooling before opening preview.
-4. **[2026-03-19] Settings performance should avoid whole-package AI icon imports**
+3. **[2026-03-19] Phone and Tailscale checks should run against `vite preview`**
+   Do instead: use `./scripts/dev.sh restart-preview` when validating mobile load speed so the device hits production bundles instead of the HMR dev server.
+4. **[2026-03-19] Preview mode needs its own API proxy config**
+   Do instead: keep `vite.config.ts` `preview.proxy` aligned with `server.proxy`, or `/api` and `/static` routes will fail after switching away from `pnpm dev`.
+5. **[2026-03-19] Mobile home performance depends on deferred preview assets**
+   Do instead: keep `MarkdownViewer`, markmap, code-highlighting, image zoom, and history on lazy chunks so phone users do not download preview tooling before opening those panels.
+6. **[2026-03-19] Settings performance should avoid whole-package AI icon imports**
    Do instead: render provider badges from lightweight local mappings in `providerLogo.ts` instead of importing all of `@lobehub/icons` for the settings model list.
-5. **[2026-03-19] Stable manualChunks should exclude settings packages with circular deps**
+7. **[2026-03-19] Stable manualChunks should exclude settings packages with circular deps**
    Do instead: split markdown, markmap, lottie, react core, and app shell with `build/manualChunks.ts`, but let settings packages ride on route-level lazy loading unless the chunk graph is proven cycle-free.
-6. **[2026-03-19] Local runtime uses split logs**
+8. **[2026-03-19] Local runtime uses split logs**
    Do instead: treat `backend.local.log` and `frontend.local.log` as process stdout/stderr, and `backend/logs/app.log` as structured backend app logging.
-7. **[2026-03-19] Web note generation must keep image-input mode disabled until payload handling is redesigned**
+9. **[2026-03-19] Web note generation must keep image-input mode disabled until payload handling is redesigned**
    Do instead: normalize web requests to `screenshot=False`, `video_understanding=False`, `grid_size=[]`, and strip `screenshot` from requested formats; keep screenshot mode explicit-only in CLI.
 
 ## User Directives

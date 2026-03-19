@@ -10,6 +10,18 @@ export default defineConfig(({ mode }) => {
 
   const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:8000'
   const port = parseInt(env.VITE_FRONTEND_PORT || '3015', 10)
+  const proxy = {
+    '/api': {
+      target: apiBaseUrl,
+      changeOrigin: true,
+      rewrite: (requestPath: string) => requestPath.replace(/^\/api/, '/api'),
+    },
+    '/static': {
+      target: apiBaseUrl,
+      changeOrigin: true,
+      rewrite: (requestPath: string) => requestPath.replace(/^\/static/, '/static'),
+    },
+  }
 
   return {
     base: './',
@@ -30,18 +42,12 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: port,
       allowedHosts: true, // 允许任意域名访问
-      proxy: {
-        '/api': {
-          target: apiBaseUrl,
-          changeOrigin: true,
-          rewrite: path => path.replace(/^\/api/, '/api'),
-        },
-        '/static': {
-          target: apiBaseUrl,
-          changeOrigin: true,
-          rewrite: path => path.replace(/^\/static/, '/static'),
-        },
-      },
+      proxy,
+    },
+    preview: {
+      host: '0.0.0.0',
+      port,
+      proxy,
     },
   }
 })

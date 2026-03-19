@@ -7,8 +7,6 @@ import Error from '@/components/Lottie/error.tsx'
 import Loading from '@/components/Lottie/Loading.tsx'
 import Idle from '@/components/Lottie/Idle.tsx'
 import StepBar from '@/pages/HomePage/components/StepBar.tsx'
-import Zoom from 'react-medium-image-zoom'
-import 'react-medium-image-zoom/dist/styles.css'
 import gfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
@@ -23,6 +21,7 @@ import { buildTaskProgressDisplay } from '@/lib/taskProgress.ts'
 
 const MarkmapEditor = lazy(() => import('@/pages/HomePage/components/MarkmapComponent.tsx'))
 const MarkdownCodeBlock = lazy(() => import('@/pages/HomePage/components/MarkdownCodeBlock.tsx'))
+const MarkdownImage = lazy(() => import('@/pages/HomePage/components/MarkdownImage.tsx'))
 
 interface VersionNote {
   ver_id: string
@@ -298,18 +297,11 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
                         if (src.startsWith('/')) {
                           src = baseURL + src
                         }
-                        props.src = src
 
                      return(
-                      <div className="my-8 flex justify-center">
-                          <Zoom>
-                            <img
-                              {...props}
-                              className="max-w-full cursor-zoom-in rounded-lg object-cover shadow-md transition-all hover:shadow-lg"
-                              style={{ maxHeight: '500px' }}
-                            />
-                          </Zoom>
-                        </div>
+                        <Suspense fallback={renderLazyFallback('图片查看模块加载中…')}>
+                          <MarkdownImage alt={props.alt || ''} src={src} />
+                        </Suspense>
                       )},
 
                       // Better strong/bold text

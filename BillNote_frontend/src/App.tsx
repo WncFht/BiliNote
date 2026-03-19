@@ -4,7 +4,6 @@ import { Suspense, lazy, useEffect } from 'react'
 import { BrowserRouter, Routes } from 'react-router-dom'
 import { Route } from 'react-router-dom'
 import Index from '@/pages/Index.tsx'
-import { systemCheck } from '@/services/system.ts'
 import { useCheckBackend } from '@/hooks/useCheckBackend.ts'
 import BackendInitDialog from '@/components/BackendInitDialog'
 import { useTaskStore } from '@/store/taskStore'
@@ -30,11 +29,43 @@ function App() {
   const { loading, initialized } = useCheckBackend()
   const loadTaskHistory = useTaskStore(state => state.loadTaskHistory)
 
-  // 在后端初始化完成后执行系统检查
+  // 首屏优先保持可交互，历史列表改为在浏览器空闲时同步。
   useEffect(() => {
-    if (initialized) {
-      systemCheck()
-      void loadTaskHistory()
+    if (!initialized) {
+      return
+    }
+
+    let cancelled = false
+
+    const hydrateTaskHistory = () => {
+      if (cancelled) {
+        return
+      }
+
+      void loadTaskHistory().catch(error => {
+        console.warn('加载任务历史失败', error)
+      })
+    }
+
+    let idleHandle: number | null = null
+    let timeoutHandle: number | null = null
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      idleHandle = window.requestIdleCallback(hydrateTaskHistory, { timeout: 1500 })
+    } else if (typeof window !== 'undefined') {
+      timeoutHandle = window.setTimeout(hydrateTaskHistory, 400)
+    }
+
+    return () => {
+      cancelled = true
+
+      if (idleHandle !== null && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleHandle)
+      }
+
+      if (timeoutHandle !== null) {
+        window.clearTimeout(timeoutHandle)
+      }
     }
   }, [initialized, loadTaskHistory])
 

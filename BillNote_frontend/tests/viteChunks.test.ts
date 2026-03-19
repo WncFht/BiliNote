@@ -13,6 +13,14 @@ test('getManualChunkName groups markdown and visualization libraries into stable
     'markdown-preview'
   )
   assert.equal(
+    getManualChunkName('/workspace/node_modules/react-syntax-highlighter/dist/index.js'),
+    'code-highlighter'
+  )
+  assert.equal(
+    getManualChunkName('/workspace/node_modules/react-medium-image-zoom/dist/index.js'),
+    'image-zoom'
+  )
+  assert.equal(
     getManualChunkName('/workspace/node_modules/markmap-view/dist/index.js'),
     'markmap'
   )

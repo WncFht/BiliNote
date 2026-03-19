@@ -4,14 +4,21 @@ const markdownPackages = [
   'rehype-',
   'katex',
   'github-markdown-css',
-  'react-syntax-highlighter',
-  'prismjs',
-  'react-medium-image-zoom',
 ]
 
 const markmapPackages = [
   'markmap-',
   '/d3-',
+]
+
+const codeHighlighterPackages = [
+  'react-syntax-highlighter',
+  'prismjs',
+  'refractor',
+]
+
+const imageZoomPackages = [
+  'react-medium-image-zoom',
 ]
 
 const lottiePackages = [
@@ -29,6 +36,14 @@ export function getManualChunkName(id: string): string | undefined {
 
   if (markdownPackages.some(packageName => normalizedId.includes(packageName))) {
     return 'markdown-preview'
+  }
+
+  if (codeHighlighterPackages.some(packageName => normalizedId.includes(packageName))) {
+    return 'code-highlighter'
+  }
+
+  if (imageZoomPackages.some(packageName => normalizedId.includes(packageName))) {
+    return 'image-zoom'
   }
 
   if (markmapPackages.some(packageName => normalizedId.includes(packageName))) {

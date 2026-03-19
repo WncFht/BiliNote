@@ -16,6 +16,8 @@ FRONTEND_LOG_FILE="${BILINOTE_FRONTEND_LOG_FILE:-$ROOT_DIR/frontend.local.log}"
 
 BACKEND_CMD="${BILINOTE_BACKEND_CMD:-uv run python main.py}"
 FRONTEND_CMD="${BILINOTE_FRONTEND_CMD:-pnpm dev}"
+FRONTEND_PREVIEW_PORT="${BILINOTE_FRONTEND_PREVIEW_PORT:-3015}"
+FRONTEND_PREVIEW_CMD="${BILINOTE_FRONTEND_PREVIEW_CMD:-pnpm build && pnpm exec vite preview --host 0.0.0.0 --port $FRONTEND_PREVIEW_PORT}"
 
 usage() {
   cat <<EOF
@@ -23,8 +25,10 @@ Usage: ./scripts/dev.sh <command> [service]
 
 Commands:
   start              Start backend and frontend
+  start-preview      Start backend and frontend preview build
   stop               Stop backend and frontend
   restart            Restart backend and frontend
+  restart-preview    Restart backend and frontend preview build
   status             Show service status
   logs [service]     Show recent logs for backend, frontend, or all
   help               Show this help
@@ -180,6 +184,11 @@ start_all() {
   start_service "frontend" "$FRONTEND_WORKDIR" "$FRONTEND_PID_FILE" "$FRONTEND_LOG_FILE" "$FRONTEND_CMD"
 }
 
+start_preview_all() {
+  start_service "backend" "$BACKEND_WORKDIR" "$BACKEND_PID_FILE" "$BACKEND_LOG_FILE" "$BACKEND_CMD"
+  start_service "frontend" "$FRONTEND_WORKDIR" "$FRONTEND_PID_FILE" "$FRONTEND_LOG_FILE" "$FRONTEND_PREVIEW_CMD"
+}
+
 stop_all() {
   stop_service "frontend" "$FRONTEND_PID_FILE"
   stop_service "backend" "$BACKEND_PID_FILE"
@@ -191,12 +200,19 @@ case "$COMMAND" in
   start)
     start_all
     ;;
+  start-preview)
+    start_preview_all
+    ;;
   stop)
     stop_all
     ;;
   restart)
     stop_all
     start_all
+    ;;
+  restart-preview)
+    stop_all
+    start_preview_all
     ;;
   status)
     print_status

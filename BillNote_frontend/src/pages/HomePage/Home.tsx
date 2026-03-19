@@ -2,10 +2,10 @@ import { FC, Suspense, lazy, useEffect, useState } from 'react'
 import HomeLayout from '@/layouts/HomeLayout.tsx'
 import NoteForm from '@/pages/HomePage/components/NoteForm.tsx'
 import { useTaskStore } from '@/store/taskStore'
-import History from '@/pages/HomePage/components/History.tsx'
 import { deriveViewStatus, type ViewStatus } from '@/lib/taskProgress.ts'
 
 const MarkdownViewer = lazy(() => import('@/pages/HomePage/components/MarkdownViewer.tsx'))
+const History = lazy(() => import('@/pages/HomePage/components/History.tsx'))
 
 const PreviewLoader = ({ status }: { status: ViewStatus }) => (
   <div className="flex h-full min-h-0 w-full flex-col items-center justify-center gap-4 px-6 text-center text-neutral-500">
@@ -21,6 +21,12 @@ const PreviewLoader = ({ status }: { status: ViewStatus }) => (
         预览面板已改为按需加载，移动端首屏会优先保证表单可操作。
       </p>
     </div>
+  </div>
+)
+
+const HistoryLoader = () => (
+  <div className="flex h-full min-h-0 items-center justify-center px-6 text-sm text-neutral-500">
+    正在载入历史记录…
   </div>
 )
 
@@ -50,7 +56,11 @@ export const HomePage: FC = () => {
           <MarkdownViewer status={status} />
         </Suspense>
       }
-      History={<History />}
+      History={
+        <Suspense fallback={<HistoryLoader />}>
+          <History />
+        </Suspense>
+      }
     />
   )
 }
