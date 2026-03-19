@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { FC, Suspense, lazy, useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Button } from '@/components/ui/button.tsx'
 import { Copy, ArrowRight, Play, ExternalLink } from 'lucide-react'
@@ -7,8 +7,6 @@ import Error from '@/components/Lottie/error.tsx'
 import Loading from '@/components/Lottie/Loading.tsx'
 import Idle from '@/components/Lottie/Idle.tsx'
 import StepBar from '@/pages/HomePage/components/StepBar.tsx'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { atomDark as codeStyle } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import Zoom from 'react-medium-image-zoom'
 import 'react-medium-image-zoom/dist/styles.css'
 import gfm from 'remark-gfm'
@@ -16,14 +14,15 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 import 'github-markdown-css/github-markdown-light.css'
-import { FC } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area.tsx'
 import { useTaskStore } from '@/store/taskStore'
 import { noteStyles } from '@/constant/note.ts'
 import { MarkdownHeader } from '@/pages/HomePage/components/MarkdownHeader.tsx'
 import TranscriptViewer from '@/pages/HomePage/components/transcriptViewer.tsx'
-import MarkmapEditor from '@/pages/HomePage/components/MarkmapComponent.tsx'
 import { buildTaskProgressDisplay } from '@/lib/taskProgress.ts'
+
+const MarkmapEditor = lazy(() => import('@/pages/HomePage/components/MarkmapComponent.tsx'))
+const MarkdownCodeBlock = lazy(() => import('@/pages/HomePage/components/MarkdownCodeBlock.tsx'))
 
 interface VersionNote {
   ver_id: string
@@ -114,6 +113,12 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
     document.body.removeChild(link)
   }
 
+  const renderLazyFallback = (message: string) => (
+    <div className="flex items-center justify-center px-4 py-8 text-sm text-neutral-500">
+      {message}
+    </div>
+  )
+
   if (status === 'loading') {
     return (
       <div className="flex h-full min-h-0 w-full flex-col items-center justify-center space-y-4 px-4 text-center text-neutral-500">
@@ -182,12 +187,14 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
       {viewMode === 'map' ? (
         <div className="flex w-full flex-1 overflow-hidden bg-white">
           <div className={'w-full'}>
-            <MarkmapEditor
-              value={selectedContent}
-              onChange={() => {}}
-              height="100%" // 根据需求可以设定百分比或固定高度
-              title={currentTask?.audioMeta?.title || '思维导图'}
-            />
+            <Suspense fallback={renderLazyFallback('思维导图加载中…')}>
+              <MarkmapEditor
+                value={selectedContent}
+                onChange={() => {}}
+                height="100%" // 根据需求可以设定百分比或固定高度
+                title={currentTask?.audioMeta?.title || '思维导图'}
+              />
+            </Suspense>
           </div>
         </div>
       ) : (
@@ -375,21 +382,9 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
                                   复制
                                 </button>
                               </div>
-                              <SyntaxHighlighter
-                                style={codeStyle}
-                                language={match[1]}
-                                PreTag="div"
-                                className="!bg-muted !m-0 !p-0"
-                                customStyle={{
-                                  margin: 0,
-                                  padding: '1rem',
-                                  background: 'transparent',
-                                  fontSize: '0.9rem',
-                                }}
-                                {...props}
-                              >
-                                {codeContent}
-                              </SyntaxHighlighter>
+                              <Suspense fallback={renderLazyFallback('代码高亮模块加载中…')}>
+                                <MarkdownCodeBlock codeContent={codeContent} language={match[1]} />
+                              </Suspense>
                             </div>
                           )
                         }

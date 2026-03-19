@@ -1,5 +1,5 @@
 import * as Icons from '@lobehub/icons'
-import CustomLogo from '@/assets/customAI.png'
+import CustomLogo from '@/assets/customAI-small.png'
 
 interface AILogoProps {
   name: string // 图标名称（区分大小写！如 OpenAI、DeepSeek）

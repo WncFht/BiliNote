@@ -23,9 +23,11 @@
    Do instead: when different devices show different note histories, inspect `/api/task_history` and frontend `mergeHydratedTasks` before blaming local Zustand persistence alone.
 2. **[2026-03-19] Task deletion must key by `task_id`**
    Do instead: send `task_id` from the frontend delete flow and remove cached `note_results` artifacts by `task_id`; `video_id/platform` is only a legacy fallback.
-3. **[2026-03-19] Local runtime uses split logs**
+3. **[2026-03-19] Mobile home performance depends on deferred preview assets**
+   Do instead: keep `MarkdownViewer`, markmap, and code-highlighting on lazy chunks so phone users do not download preview tooling before opening preview.
+4. **[2026-03-19] Local runtime uses split logs**
    Do instead: treat `backend.local.log` and `frontend.local.log` as process stdout/stderr, and `backend/logs/app.log` as structured backend app logging.
-4. **[2026-03-19] Web note generation must keep image-input mode disabled until payload handling is redesigned**
+5. **[2026-03-19] Web note generation must keep image-input mode disabled until payload handling is redesigned**
    Do instead: normalize web requests to `screenshot=False`, `video_understanding=False`, `grid_size=[]`, and strip `screenshot` from requested formats; keep screenshot mode explicit-only in CLI.
 
 ## User Directives
