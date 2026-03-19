@@ -9,6 +9,8 @@
 ## Execution & Validation (Highest Priority)
 1. **[2026-03-19] Runtime failures need the exact log segment**
    Do instead: inspect the newest stack trace in `backend.local.log`, `frontend.local.log`, and `backend/logs/app.log` before inferring root cause.
+2. **[2026-03-19] Frontend unit tests can run with plain `node --test`**
+   Do instead: run targeted frontend `.ts` tests like `node --test BillNote_frontend/tests/taskProgress.test.ts` before reaching for extra runners such as `tsx`.
 
 ## Shell & Command Reliability
 1. **[2026-03-19] Public-network shell commands should use the local proxy helper**

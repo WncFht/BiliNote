@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Button } from '@/components/ui/button.tsx'
-import { Copy, Download, ArrowRight, Play, ExternalLink } from 'lucide-react'
+import { Copy, ArrowRight, Play, ExternalLink } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import Error from '@/components/Lottie/error.tsx'
 import Loading from '@/components/Lottie/Loading.tsx'
@@ -47,7 +47,6 @@ const steps = [
 ]
 
 const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
-  const [copied, setCopied] = useState(false)
   const [currentVerId, setCurrentVerId] = useState<string>('')
   const [selectedContent, setSelectedContent] = useState<string>('')
   const [modelName, setModelName] = useState<string>('')
@@ -63,7 +62,6 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
   const isMultiVersion = Array.isArray(currentTask?.markdown)
   const [showTranscribe, setShowTranscribe] = useState(false)
   const [viewMode, setViewMode] = useState<'map' | 'preview'>('preview')
-  const svgRef = useRef<SVGSVGElement>(null)
   const progressDisplay = buildTaskProgressDisplay(taskStatus, taskMessage)
   // 多版本内容处理
   useEffect(() => {
@@ -99,39 +97,10 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(selectedContent)
-      setCopied(true)
       toast.success('已复制到剪贴板')
-      setTimeout(() => setCopied(false), 2000)
-    } catch (e) {
+    } catch {
       toast.error('复制失败')
     }
-  }
-  const alertButton = {
-    id: 'alert',
-    title: '测试警告',
-    content: '⚠️',
-    onClick: () => alert('你点击了自定义按钮！'),
-  }
-  const exportButton = {
-    id: 'export',
-    title: '导出思维导图',
-    content: '⤓',
-    onClick: () => {
-      const svgEl = svgRef.current
-      if (!svgEl) return
-      // 同上面的序列化逻辑
-      const serializer = new XMLSerializer()
-      const source = serializer.serializeToString(svgEl)
-      const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>', source], {
-        type: 'image/svg+xml;charset=utf-8',
-      })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'mindmap.svg'
-      a.click()
-      URL.revokeObjectURL(url)
-    },
   }
   const handleDownload = () => {
     const task = getCurrentTask()
@@ -147,7 +116,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
 
   if (status === 'loading') {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center space-y-4 text-neutral-500">
+      <div className="flex h-full min-h-0 w-full flex-col items-center justify-center space-y-4 px-4 text-center text-neutral-500">
         <StepBar steps={steps} currentStep={taskStatus} />
         <Loading className="h-5 w-5" />
         <div className="w-full max-w-xl text-center text-sm">
@@ -163,7 +132,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
 
   if (status === 'idle') {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center space-y-3 text-neutral-500">
+      <div className="flex h-full min-h-0 w-full flex-col items-center justify-center space-y-3 px-4 text-center text-neutral-500">
         <Idle />
         <div className="text-center">
           <p className="text-lg font-bold">输入视频链接并点击“生成笔记”</p>
@@ -175,7 +144,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
 
   if (status === 'failed' && !isMultiVersion) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 space-y-3">
+      <div className="flex h-full min-h-0 w-full flex-col items-center justify-center gap-4 space-y-3 px-4 text-center">
         <Error />
         <div className="text-center">
           <p className="text-lg font-bold text-red-500">笔记生成失败</p>
@@ -192,7 +161,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
   }
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
       <MarkdownHeader
         currentTask={currentTask}
         isMultiVersion={isMultiVersion}
@@ -222,10 +191,10 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 overflow-hidden bg-white py-2">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white py-2 xl:flex-row">
           {selectedContent && selectedContent !== 'loading' && selectedContent !== 'empty' ? (
             <>
-              <ScrollArea className="w-full">
+              <ScrollArea className="min-h-0 w-full flex-1">
                 <div className={'markdown-body w-full px-2'}>
                   <ReactMarkdown
                     remarkPlugins={[gfm, remarkMath]}
@@ -316,7 +285,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
                       },
 
                       // Enhanced image with zoom capability
-                      img: ({ node, ...props }) =>{
+                      img: ({ ...props }) =>{
                         // Fix the URL by removing the 'undefined' prefix if it exists
                         let src = props.src
                         if (src.startsWith('/')) {
@@ -476,14 +445,14 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
                 </div>
               </ScrollArea>
               {showTranscribe && (
-                <div className={'ml-2 w-2/4'}>
+                <div className="mt-2 w-full border-t border-neutral-100 pt-2 xl:mt-0 xl:ml-2 xl:w-2/4 xl:border-l xl:border-t-0 xl:pt-0 xl:pl-2">
                   <TranscriptViewer />
                 </div>
               )}
             </>
           ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <div className="w-[300px] flex-col justify-items-center">
+            <div className="flex h-full w-full items-center justify-center px-4">
+              <div className="flex max-w-[300px] flex-col items-center text-center">
                 <div className="bg-primary-light mb-4 flex h-16 w-16 items-center justify-center rounded-full">
                   <ArrowRight className="text-primary h-8 w-8" />
                 </div>

@@ -23,7 +23,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip.tsx'
 import { Checkbox } from '@/components/ui/checkbox.tsx'
-import { ScrollArea } from '@/components/ui/scroll-area.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import {
   Select,
@@ -41,6 +40,7 @@ import {
   normalizeWebGenerateNotePayload,
   WEB_NOTE_FORMATS,
 } from '@/lib/noteRequest.ts'
+import { cn } from '@/lib/utils.ts'
 
 /* -------------------- 校验 Schema -------------------- */
 const formSchema = z
@@ -115,7 +115,7 @@ const CheckboxGroup = ({
   onChange: (v: string[]) => void
   disabledMap: Record<string, boolean>
 }) => (
-  <div className="flex flex-wrap space-x-1.5">
+  <div className="flex flex-wrap gap-x-4 gap-y-2">
     {WEB_NOTE_FORMATS.map(({ label, value: v }) => (
       <label key={v} className="flex items-center space-x-2">
         <Checkbox
@@ -139,7 +139,7 @@ const NoteForm = () => {
   /* ---- 全局状态 ---- */
   const { addPendingTask, currentTaskId, setCurrentTask, getCurrentTask, retryTask } =
     useTaskStore()
-  const { loadEnabledModels, modelList, showFeatureHint, setShowFeatureHint } = useModelStore()
+  const { loadEnabledModels, modelList } = useModelStore()
 
   /* ---- 表单 ---- */
   const form = useForm<NoteFormValues>({
@@ -240,10 +240,10 @@ const NoteForm = () => {
     const label = generating ? '正在生成…' : editing ? '重新生成' : '生成笔记'
 
     return (
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <Button
           type="submit"
-          className={!editing ? 'w-full' : 'w-2/3' + ' bg-primary'}
+          className={cn('w-full bg-primary', editing && 'sm:w-2/3')}
           disabled={generating}
         >
           {generating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -251,7 +251,12 @@ const NoteForm = () => {
         </Button>
 
         {editing && (
-          <Button type="button" variant="outline" className="w-1/3" onClick={handleCreateNew}>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:w-1/3"
+            onClick={handleCreateNew}
+          >
             <Plus className="mr-2 h-4 w-4" />
             新建笔记
           </Button>
@@ -262,7 +267,7 @@ const NoteForm = () => {
 
   /* -------------------- 渲染 -------------------- */
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full" data-mobile-form>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
           {/* 顶部按钮 */}
@@ -270,7 +275,7 @@ const NoteForm = () => {
 
           {/* 视频链接 & 平台 */}
           <SectionHeader title="视频链接" tip="支持 B 站、YouTube 等平台" />
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             {/* 平台选择 */}
 
             <FormField
@@ -285,7 +290,7 @@ const NoteForm = () => {
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger className="w-32">
+                      <SelectTrigger className="w-full sm:w-32">
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
@@ -369,7 +374,7 @@ const NoteForm = () => {
               </FormItem>
             )}
           />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {/* 模型选择 */}
             {
 
