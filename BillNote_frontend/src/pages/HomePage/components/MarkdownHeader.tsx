@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Copy, Download, BrainCircuit } from 'lucide-react'
+import { Copy, Download, BrainCircuit, Link2, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
+import type { TaskVideoLink } from '@/lib/videoLink.ts'
 
 interface VersionNote {
   ver_id: string
@@ -27,6 +28,7 @@ interface NoteHeaderProps {
   onCopy: () => void
   onDownload: () => void
   createAt?: string | Date
+  videoLink?: TaskVideoLink | null
   showTranscribe: boolean
   setShowTranscribe: (show: boolean) => void
   viewMode: 'map' | 'preview'
@@ -44,6 +46,7 @@ export function MarkdownHeader({
   onCopy,
   onDownload,
   createAt,
+  videoLink,
   showTranscribe,
   setShowTranscribe,
   viewMode,
@@ -120,6 +123,20 @@ export function MarkdownHeader({
           <div className="text-muted-foreground w-full text-xs sm:w-auto sm:text-sm">
             创建时间: {formatDate(createAt)}
           </div>
+        )}
+
+        {videoLink && (
+          <a
+            href={videoLink.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground hover:text-primary inline-flex max-w-full items-center gap-1.5 text-xs underline underline-offset-4 transition-colors sm:text-sm"
+            title={videoLink.href}
+          >
+            <Link2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">视频链接: {videoLink.label}</span>
+            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+          </a>
         )}
       </div>
 

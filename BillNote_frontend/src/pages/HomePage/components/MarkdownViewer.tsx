@@ -18,6 +18,7 @@ import { noteStyles } from '@/constant/note.ts'
 import { MarkdownHeader } from '@/pages/HomePage/components/MarkdownHeader.tsx'
 import TranscriptViewer from '@/pages/HomePage/components/transcriptViewer.tsx'
 import { buildTaskProgressDisplay } from '@/lib/taskProgress.ts'
+import { buildTaskVideoLink } from '@/lib/videoLink.ts'
 
 const MarkmapEditor = lazy(() => import('@/pages/HomePage/components/MarkmapComponent.tsx'))
 const MarkdownCodeBlock = lazy(() => import('@/pages/HomePage/components/MarkdownCodeBlock.tsx'))
@@ -61,6 +62,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
   const [showTranscribe, setShowTranscribe] = useState(false)
   const [viewMode, setViewMode] = useState<'map' | 'preview'>('preview')
   const progressDisplay = buildTaskProgressDisplay(taskStatus, taskMessage)
+  const videoLink = currentTask ? buildTaskVideoLink(currentTask) : null
   // 多版本内容处理
   useEffect(() => {
     if (!currentTask) return
@@ -177,6 +179,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
         onCopy={handleCopy}
         onDownload={handleDownload}
         createAt={createTime}
+        videoLink={videoLink}
         showTranscribe={showTranscribe}
         setShowTranscribe={setShowTranscribe}
         viewMode={viewMode}
