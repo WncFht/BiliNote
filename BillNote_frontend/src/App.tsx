@@ -7,6 +7,7 @@ import Index from '@/pages/Index.tsx'
 import { useCheckBackend } from '@/hooks/useCheckBackend.ts'
 import BackendInitDialog from '@/components/BackendInitDialog'
 import { useTaskStore } from '@/store/taskStore'
+import { startTaskHistoryRefresh } from '@/lib/historySync.ts'
 
 import { HomePage } from './pages/HomePage/Home.tsx'
 
@@ -56,8 +57,11 @@ function App() {
       timeoutHandle = window.setTimeout(hydrateTaskHistory, 400)
     }
 
+    const stopTaskHistoryRefresh = startTaskHistoryRefresh(hydrateTaskHistory)
+
     return () => {
       cancelled = true
+      stopTaskHistoryRefresh()
 
       if (idleHandle !== null && typeof window.cancelIdleCallback === 'function') {
         window.cancelIdleCallback(idleHandle)

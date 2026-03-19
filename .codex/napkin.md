@@ -17,6 +17,8 @@
 ## Shell & Command Reliability
 1. **[2026-03-19] Public-network shell commands should use the local proxy helper**
    Do instead: run networked commands with `zsh -lc 'proxy_on >/dev/null; <command>'` unless the target is localhost.
+2. **[2026-03-19] `scripts/dev.sh` should `exec` long-running services**
+   Do instead: keep backend/frontend commands as `exec ...` so stopping the recorded PID also stops `pnpm`/`vite` children and preview does not drift onto a fallback port.
 
 ## Domain Behavior Guardrails
 1. **[2026-03-19] Web history now hydrates from backend task history**
@@ -29,13 +31,15 @@
    Do instead: keep `vite.config.ts` `preview.proxy` aligned with `server.proxy`, or `/api` and `/static` routes will fail after switching away from `pnpm dev`.
 5. **[2026-03-19] Mobile home performance depends on deferred preview assets**
    Do instead: keep `MarkdownViewer`, markmap, code-highlighting, image zoom, and history on lazy chunks so phone users do not download preview tooling before opening those panels.
-6. **[2026-03-19] Settings performance should avoid whole-package AI icon imports**
+6. **[2026-03-19] Cross-device history needs active refresh after initial hydration**
+   Do instead: refresh `/api/task_history` when the page regains focus and on a light visible-only interval, not just once at startup.
+7. **[2026-03-19] Settings performance should avoid whole-package AI icon imports**
    Do instead: render provider badges from lightweight local mappings in `providerLogo.ts` instead of importing all of `@lobehub/icons` for the settings model list.
-7. **[2026-03-19] Stable manualChunks should exclude settings packages with circular deps**
+8. **[2026-03-19] Stable manualChunks should exclude settings packages with circular deps**
    Do instead: split markdown, markmap, lottie, react core, and app shell with `build/manualChunks.ts`, but let settings packages ride on route-level lazy loading unless the chunk graph is proven cycle-free.
-8. **[2026-03-19] Local runtime uses split logs**
+9. **[2026-03-19] Local runtime uses split logs**
    Do instead: treat `backend.local.log` and `frontend.local.log` as process stdout/stderr, and `backend/logs/app.log` as structured backend app logging.
-9. **[2026-03-19] Web note generation must keep image-input mode disabled until payload handling is redesigned**
+10. **[2026-03-19] Web note generation must keep image-input mode disabled until payload handling is redesigned**
    Do instead: normalize web requests to `screenshot=False`, `video_understanding=False`, `grid_size=[]`, and strip `screenshot` from requested formats; keep screenshot mode explicit-only in CLI.
 
 ## User Directives

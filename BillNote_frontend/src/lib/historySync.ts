@@ -151,6 +151,75 @@ function mergeMarkdown(current: HistoryTask['markdown'], incoming: HistoryTask['
   return current
 }
 
+type HistorySyncListener = () => void
+
+interface TaskHistorySyncEnvironment {
+  addWindowListener: (type: 'focus', listener: HistorySyncListener) => void
+  removeWindowListener: (type: 'focus', listener: HistorySyncListener) => void
+  addDocumentListener: (type: 'visibilitychange', listener: HistorySyncListener) => void
+  removeDocumentListener: (type: 'visibilitychange', listener: HistorySyncListener) => void
+  setInterval: (listener: HistorySyncListener, intervalMs: number) => number
+  clearInterval: (id: number) => void
+  getVisibilityState: () => 'visible' | 'hidden'
+}
+
+function createDefaultTaskHistorySyncEnvironment(): TaskHistorySyncEnvironment | null {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return null
+  }
+
+  return {
+    addWindowListener: (type, listener) => window.addEventListener(type, listener),
+    removeWindowListener: (type, listener) => window.removeEventListener(type, listener),
+    addDocumentListener: (type, listener) => document.addEventListener(type, listener),
+    removeDocumentListener: (type, listener) => document.removeEventListener(type, listener),
+    setInterval: (listener, intervalMs) => window.setInterval(listener, intervalMs),
+    clearInterval: id => window.clearInterval(id),
+    getVisibilityState: () => (document.visibilityState === 'hidden' ? 'hidden' : 'visible'),
+  }
+}
+
+export function startTaskHistoryRefresh(
+  sync: () => void,
+  environment = createDefaultTaskHistorySyncEnvironment(),
+  intervalMs = 15000
+) {
+  if (!environment) {
+    return () => {}
+  }
+
+  const syncIfVisible = () => {
+    if (environment.getVisibilityState() === 'hidden') {
+      return
+    }
+
+    sync()
+  }
+
+  const handleFocus = () => {
+    syncIfVisible()
+  }
+
+  const handleVisibilityChange = () => {
+    if (environment.getVisibilityState() !== 'visible') {
+      return
+    }
+
+    sync()
+  }
+
+  const intervalId = environment.setInterval(syncIfVisible, intervalMs)
+
+  environment.addWindowListener('focus', handleFocus)
+  environment.addDocumentListener('visibilitychange', handleVisibilityChange)
+
+  return () => {
+    environment.clearInterval(intervalId)
+    environment.removeWindowListener('focus', handleFocus)
+    environment.removeDocumentListener('visibilitychange', handleVisibilityChange)
+  }
+}
+
 export function mapHistoryItemToTask(item: ServerHistoryItem): HistoryTask {
   const platform = item.result?.audio_meta?.platform || item.platform || 'bilibili'
   const transcript: Transcript = {
