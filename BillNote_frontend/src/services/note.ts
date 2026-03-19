@@ -1,5 +1,6 @@
 import request from '@/utils/request'
 import type { TaskStatusResponsePayload } from '@/lib/taskProgress.ts'
+import { normalizeWebGenerateNotePayload } from '@/lib/noteRequest.ts'
 import toast from 'react-hot-toast'
 
 export const generateNote = async (data: {
@@ -12,13 +13,16 @@ export const generateNote = async (data: {
   format: Array<string>
   style: string
   extras?: string
-  video_understand?: boolean
+  screenshot?: boolean
+  link?: boolean
+  video_understanding?: boolean
   video_interval?: number
-  grid_size: Array<number>
+  grid_size?: Array<number>
 }) => {
   try {
-    console.log('generateNote', data)
-    const response = await request.post('/generate_note', data)
+    const normalizedData = normalizeWebGenerateNotePayload(data)
+    console.log('generateNote', normalizedData)
+    const response = await request.post('/generate_note', normalizedData)
 
     if (!response) {
       if (response.data.msg) {

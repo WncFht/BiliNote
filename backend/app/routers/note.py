@@ -63,6 +63,33 @@ class VideoRequest(BaseModel):
         return v
 
 
+def normalize_web_generation_options(
+    *,
+    screenshot: bool = False,
+    _format: Optional[list] = None,
+    video_understanding: bool = False,
+    video_interval: Optional[int] = 0,
+    grid_size: Optional[list] = None,
+) -> dict:
+    del screenshot, video_understanding, grid_size
+
+    normalized_formats = []
+    for item in _format or []:
+        if item == "screenshot":
+            continue
+        if item in normalized_formats:
+            continue
+        normalized_formats.append(item)
+
+    return {
+        "screenshot": False,
+        "_format": normalized_formats,
+        "video_understanding": False,
+        "video_interval": video_interval if video_interval is not None else 0,
+        "grid_size": [],
+    }
+
+
 NOTE_OUTPUT_DIR = os.getenv("NOTE_OUTPUT_DIR", "note_results")
 UPLOAD_DIR = "uploads"
 
@@ -82,6 +109,14 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
     if not model_name or not provider_id:
         raise HTTPException(status_code=400, detail="请选择模型和提供者")
 
+    normalized_options = normalize_web_generation_options(
+        screenshot=screenshot,
+        _format=_format,
+        video_understanding=video_understanding,
+        video_interval=video_interval,
+        grid_size=grid_size,
+    )
+
     note = NoteGenerator().generate(
         video_url=video_url,
         platform=platform,
@@ -90,13 +125,13 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
         model_name=model_name,
         provider_id=provider_id,
         link=link,
-        _format=_format,
+        _format=normalized_options["_format"],
         style=style,
         extras=extras,
-        screenshot=screenshot
-        , video_understanding=video_understanding,
-        video_interval=video_interval,
-        grid_size=grid_size
+        screenshot=normalized_options["screenshot"],
+        video_understanding=normalized_options["video_understanding"],
+        video_interval=normalized_options["video_interval"],
+        grid_size=normalized_options["grid_size"],
     )
     logger.info(f"Note generated: {task_id}")
     if not note or not note.markdown:

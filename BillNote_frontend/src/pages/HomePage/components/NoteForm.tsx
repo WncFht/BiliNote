@@ -4,16 +4,14 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form.tsx'
 import { useEffect,useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { type FieldErrors, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
 import { Info, Loader2, Plus } from 'lucide-react'
-import { message, Alert } from 'antd'
 import { generateNote } from '@/services/note.ts'
 import { uploadFile } from '@/services/upload.ts'
 import { useTaskStore } from '@/store/taskStore'
@@ -36,9 +34,13 @@ import {
 } from '@/components/ui/select.tsx'
 import { Input } from '@/components/ui/input.tsx'
 import { Textarea } from '@/components/ui/textarea.tsx'
-import { noteStyles, noteFormats, videoPlatforms } from '@/constant/note.ts'
-import { fetchModels } from '@/services/model.ts'
+import { noteStyles, videoPlatforms } from '@/constant/note.ts'
 import { useNavigate } from 'react-router-dom'
+import {
+  buildDefaultWebNoteFormValues,
+  normalizeWebGenerateNotePayload,
+  WEB_NOTE_FORMATS,
+} from '@/lib/noteRequest.ts'
 
 /* -------------------- 校验 Schema -------------------- */
 const formSchema = z
@@ -55,8 +57,11 @@ const formSchema = z
     video_understanding: z.boolean().optional(),
     video_interval: z.coerce.number().min(1).max(30).default(4).optional(),
     grid_size: z
-      .tuple([z.coerce.number().min(1).max(10), z.coerce.number().min(1).max(10)])
-      .default([3, 3])
+      .union([
+        z.tuple([z.coerce.number().min(1).max(10), z.coerce.number().min(1).max(10)]),
+        z.tuple([]),
+      ])
+      .default([])
       .optional(),
   })
   .superRefine(({ video_url, platform }, ctx) => {
@@ -111,7 +116,7 @@ const CheckboxGroup = ({
   disabledMap: Record<string, boolean>
 }) => (
   <div className="flex flex-wrap space-x-1.5">
-    {noteFormats.map(({ label, value: v }) => (
+    {WEB_NOTE_FORMATS.map(({ label, value: v }) => (
       <label key={v} className="flex items-center space-x-2">
         <Checkbox
           checked={value.includes(v)}
@@ -139,21 +144,12 @@ const NoteForm = () => {
   /* ---- 表单 ---- */
   const form = useForm<NoteFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      platform: 'bilibili',
-      quality: 'medium',
-      model_name: modelList[0]?.model_name || '',
-      style: 'minimal',
-      video_interval: 4,
-      grid_size: [3, 3],
-      format: [],
-    },
+    defaultValues: buildDefaultWebNoteFormValues(modelList[0]?.model_name || ''),
   })
   const currentTask = getCurrentTask()
 
   /* ---- 派生状态（只 watch 一次，提高性能） ---- */
   const platform = useWatch({ control: form.control, name: 'platform' }) as string
-  const videoUnderstandingEnabled = useWatch({ control: form.control, name: 'video_understanding' })
   const editing = currentTask && currentTask.id
 
   const goModelAdd = () => {
@@ -171,20 +167,19 @@ const NoteForm = () => {
 
     console.log('currentTask.formData.platform:', formData.platform)
 
-    form.reset({
-      platform: formData.platform || 'bilibili',
-      video_url: formData.video_url || '',
-      model_name: formData.model_name || modelList[0]?.model_name || '',
-      style: formData.style || 'minimal',
-      quality: formData.quality || 'medium',
-      extras: formData.extras || '',
-      screenshot: formData.screenshot ?? false,
-      link: formData.link ?? false,
-      video_understanding: formData.video_understanding ?? false,
-      video_interval: formData.video_interval ?? 4,
-      grid_size: formData.grid_size ?? [3, 3],
-      format: formData.format ?? [],
-    })
+    form.reset(
+      normalizeWebGenerateNotePayload({
+        ...buildDefaultWebNoteFormValues(formData.model_name || modelList[0]?.model_name || ''),
+        platform: formData.platform || 'bilibili',
+        video_url: formData.video_url || '',
+        model_name: formData.model_name || modelList[0]?.model_name || '',
+        style: formData.style || 'detailed',
+        quality: formData.quality || 'medium',
+        extras: formData.extras || '',
+        link: formData.link ?? false,
+        format: formData.format,
+      })
+    )
   }, [
     // 当下面任意一个变了，就重新 reset
     currentTaskId,
@@ -218,11 +213,11 @@ const NoteForm = () => {
 
   const onSubmit = async (values: NoteFormValues) => {
     console.log('Not even go here')
-    const payload: NoteFormValues = {
+    const payload = normalizeWebGenerateNotePayload({
       ...values,
       provider_id: modelList.find(m => m.model_name === values.model_name)!.provider_id,
       task_id: currentTaskId || '',
-    }
+    })
     if (currentTaskId) {
       retryTask(currentTaskId, payload)
       return
@@ -451,81 +446,6 @@ const NoteForm = () => {
               )}
             />
           </div>
-          {/* 视频理解 */}
-          <SectionHeader title="视频理解" tip="将视频截图发给多模态模型辅助分析" />
-          <div className="flex flex-col gap-2">
-            <FormField
-              control={form.control}
-              name="video_understanding"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center gap-2">
-                    <FormLabel>启用</FormLabel>
-                    <Checkbox
-                      checked={videoUnderstandingEnabled}
-                      onCheckedChange={v => form.setValue('video_understanding', v)}
-                    />
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* 采样间隔 */}
-              <FormField
-                control={form.control}
-                name="video_interval"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>采样间隔（秒）</FormLabel>
-                    <Input disabled={!videoUnderstandingEnabled} type="number" {...field} />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {/* 拼图大小 */}
-              <FormField
-                control={form.control}
-                name="grid_size"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>拼图尺寸（列 × 行）</FormLabel>
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        disabled={!videoUnderstandingEnabled}
-                        type="number"
-                        value={field.value?.[0] || 3}
-                        onChange={e => field.onChange([+e.target.value, field.value?.[1] || 3])}
-                        className="w-16"
-                      />
-                      <span>x</span>
-                      <Input
-                        disabled={!videoUnderstandingEnabled}
-                        type="number"
-                        value={field.value?.[1] || 3}
-                        onChange={e => field.onChange([field.value?.[0] || 3, +e.target.value])}
-                        className="w-16"
-                      />
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <Alert
-              closable
-              type="error"
-              message={
-                <div>
-                  <strong>提示：</strong>
-                  <p>视频理解功能必须使用多模态模型。</p>
-                </div>
-              }
-              className="text-sm"
-            />
-          </div>
-
           {/* 笔记格式 */}
           <FormField
             control={form.control}
@@ -538,7 +458,6 @@ const NoteForm = () => {
                   onChange={field.onChange}
                   disabledMap={{
                     link: platform === 'local',
-                    screenshot: !videoUnderstandingEnabled,
                   }}
                 />
                 <FormMessage />

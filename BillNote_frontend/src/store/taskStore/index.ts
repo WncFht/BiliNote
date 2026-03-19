@@ -55,6 +55,12 @@ export interface Task {
     quality: string
     model_name: string
     provider_id: string
+    style?: string
+    format?: string[]
+    extras?: string
+    video_understanding?: boolean
+    video_interval?: number
+    grid_size?: number[]
   }
 }
 
