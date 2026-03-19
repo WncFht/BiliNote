@@ -1,32 +1,35 @@
 # app/routers/note.py
+import ipaddress
 import json
 import os
+import re
+import socket
 import uuid
+from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File
-from pydantic import BaseModel, validator, field_validator
-from dataclasses import asdict
+import httpx
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, UploadFile
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, field_validator
 
-from app.db.video_task_dao import get_task_by_video
 from app.enmus.exception import NoteErrorEnum
 from app.enmus.note_enums import DownloadQuality
+from app.enmus.task_status_enums import TaskStatus
 from app.exceptions.note import NoteError
 from app.services.note import NoteGenerator, logger
 from app.utils.response import ResponseWrapper as R
 from app.utils.url_parser import extract_video_id
 from app.validators.video_url_validator import is_supported_video_url
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import StreamingResponse
-import httpx
-from app.enmus.task_status_enums import TaskStatus
 
 # from app.services.downloader import download_raw_audio
 # from app.services.whisperer import transcribe_audio
 
 router = APIRouter()
+UPLOAD_FILENAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
+BLOCKED_PROXY_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.internal"}
 
 
 class RecordRequest(BaseModel):
@@ -94,6 +97,73 @@ NOTE_OUTPUT_DIR = os.getenv("NOTE_OUTPUT_DIR", "note_results")
 UPLOAD_DIR = "uploads"
 
 
+def _is_blocked_proxy_ip(address: str) -> bool:
+    parsed = ipaddress.ip_address(address)
+    return any((
+        parsed.is_private,
+        parsed.is_loopback,
+        parsed.is_link_local,
+        parsed.is_multicast,
+        parsed.is_reserved,
+        parsed.is_unspecified,
+    ))
+
+
+def build_safe_upload_name(filename: str) -> str:
+    candidate = (filename or "upload.bin").replace("\\", "/").split("/")[-1]
+    if not candidate or candidate in {".", ".."}:
+        candidate = "upload.bin"
+
+    source_path = Path(candidate)
+    safe_stem = UPLOAD_FILENAME_RE.sub("_", source_path.stem)
+    if not re.search(r"[A-Za-z0-9]", safe_stem):
+        safe_stem = "upload"
+
+    safe_suffix = UPLOAD_FILENAME_RE.sub("", source_path.suffix)
+    return f"{uuid.uuid4().hex}-{safe_stem}{safe_suffix}"
+
+
+def validate_image_proxy_url(raw_url: str) -> str:
+    parsed = urlparse(raw_url)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("仅支持代理 http/https 图片地址")
+
+    if not parsed.hostname:
+        raise ValueError("图片地址缺少主机名")
+
+    if parsed.username or parsed.password:
+        raise ValueError("图片地址不支持携带认证信息")
+
+    host = parsed.hostname.lower()
+    if host in BLOCKED_PROXY_HOSTS or host.endswith(".local"):
+        raise ValueError("不允许代理本地或内网地址")
+
+    try:
+        if re.fullmatch(r"\[[0-9A-Fa-f:]+\]", host):
+            normalized_host = host[1:-1]
+        else:
+            normalized_host = host
+
+        try:
+            if _is_blocked_proxy_ip(normalized_host):
+                raise ValueError("不允许代理本地或内网地址")
+        except ValueError as exc:
+            if str(exc) == "不允许代理本地或内网地址":
+                raise
+        except Exception:
+            pass
+
+        resolved = socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80))
+        for result in resolved:
+            address = result[4][0]
+            if _is_blocked_proxy_ip(address):
+                raise ValueError("不允许代理本地或内网地址")
+    except socket.gaierror as exc:
+        raise ValueError("图片地址无法解析") from exc
+
+    return raw_url
+
+
 def save_note_to_file(task_id: str, note):
     os.makedirs(NOTE_OUTPUT_DIR, exist_ok=True)
     with open(os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.json"), "w", encoding="utf-8") as f:
@@ -148,19 +218,20 @@ def delete_task(data: RecordRequest):
         # NoteGenerator().delete_note(video_id=data.video_id, platform=data.platform)
         return R.success(msg='删除成功')
     except Exception as e:
-        return R.error(msg=e)
+        return R.error(msg=e, status_code=500)
 
 
 @router.post("/upload")
 async def upload(file: UploadFile = File(...)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    file_location = os.path.join(UPLOAD_DIR, file.filename)
+    safe_name = build_safe_upload_name(file.filename or "upload.bin")
+    file_location = os.path.join(UPLOAD_DIR, safe_name)
 
     with open(file_location, "wb+") as f:
         f.write(await file.read())
 
     # 假设你静态目录挂载了 /uploads
-    return R.success({"url": f"/uploads/{file.filename}"})
+    return R.success({"url": f"/uploads/{safe_name}"})
 
 
 @router.post("/generate_note")
@@ -227,7 +298,7 @@ def get_task_status(task_id: str):
                 })
 
         if status == TaskStatus.FAILED.value:
-            return R.error(message or "任务失败", code=500)
+            return R.error(message or "任务失败", code=500, status_code=500)
 
         # 处理中状态
         return R.success({
@@ -262,8 +333,9 @@ async def image_proxy(request: Request, url: str):
     }
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(url, headers=headers)
+        validated_url = validate_image_proxy_url(url)
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
+            resp = await client.get(validated_url, headers=headers)
 
             if resp.status_code != 200:
                 raise HTTPException(status_code=resp.status_code, detail="图片获取失败")
@@ -277,5 +349,7 @@ async def image_proxy(request: Request, url: str):
                     "Content-Type": content_type,
                 }
             )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

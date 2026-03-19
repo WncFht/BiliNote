@@ -14,7 +14,7 @@ export interface AudioMeta {
   duration: number
   file_path: string
   platform: string
-  raw_info: any
+  raw_info: unknown
   title: string
   video_id: string
 }
@@ -28,9 +28,12 @@ export interface Segment {
 export interface Transcript {
   full_text: string
   language: string
-  raw: any
+  raw: unknown
   segments: Segment[]
 }
+
+export type TaskFormData = Task['formData']
+
 export interface Markdown {
   ver_id: string
   content: string
@@ -67,13 +70,13 @@ export interface Task {
 interface TaskStore {
   tasks: Task[]
   currentTaskId: string | null
-  addPendingTask: (taskId: string, platform: string) => void
+  addPendingTask: (taskId: string, platform: string, formData: TaskFormData) => void
   updateTaskContent: (id: string, data: Partial<Omit<Task, 'id' | 'createdAt'>>) => void
   removeTask: (id: string) => void
   clearTasks: () => void
   setCurrentTask: (taskId: string | null) => void
   getCurrentTask: () => Task | null
-  retryTask: (id: string) => void
+  retryTask: (id: string, payload?: TaskFormData) => void
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -82,7 +85,7 @@ export const useTaskStore = create<TaskStore>()(
       tasks: [],
       currentTaskId: null,
 
-      addPendingTask: (taskId: string, platform: string, formData: any) =>
+      addPendingTask: (taskId: string, platform: string, formData: TaskFormData) =>
 
         set(state => ({
           tasks: [
@@ -167,7 +170,7 @@ export const useTaskStore = create<TaskStore>()(
         const currentTaskId = get().currentTaskId
         return get().tasks.find(task => task.id === currentTaskId) || null
       },
-      retryTask: async (id: string, payload?: any) => {
+      retryTask: async (id: string, payload?: TaskFormData) => {
 
         if (!id){
           toast.error('任务不存在')

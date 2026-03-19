@@ -11,6 +11,8 @@
    Do instead: inspect the newest stack trace in `backend.local.log`, `frontend.local.log`, and `backend/logs/app.log` before inferring root cause.
 2. **[2026-03-19] Frontend unit tests can run with plain `node --test`**
    Do instead: run targeted frontend `.ts` tests like `node --test BillNote_frontend/tests/taskProgress.test.ts` before reaching for extra runners such as `tsx`.
+3. **[2026-03-19] Backend test files exist but `uv run pytest` is not guaranteed to work**
+   Do instead: verify `pytest` is declared in `backend/pyproject.toml` before treating `backend/tests` as a runnable project-level test suite.
 
 ## Shell & Command Reliability
 1. **[2026-03-19] Public-network shell commands should use the local proxy helper**

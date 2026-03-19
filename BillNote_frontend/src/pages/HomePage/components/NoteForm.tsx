@@ -10,6 +10,7 @@ import { useEffect,useState } from 'react'
 import { type FieldErrors, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import toast from 'react-hot-toast'
 
 import { Info, Loader2, Plus } from 'lucide-react'
 import { generateNote } from '@/services/note.ts'
@@ -40,6 +41,7 @@ import {
   normalizeWebGenerateNotePayload,
   WEB_NOTE_FORMATS,
 } from '@/lib/noteRequest.ts'
+import { resolveProviderIdForModel } from '@/lib/noteSubmission.ts'
 import { cn } from '@/lib/utils.ts'
 
 /* -------------------- 校验 Schema -------------------- */
@@ -213,9 +215,17 @@ const NoteForm = () => {
 
   const onSubmit = async (values: NoteFormValues) => {
     console.log('Not even go here')
+    let providerId: string
+    try {
+      providerId = resolveProviderIdForModel(modelList, values.model_name)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '当前模型不可用，请刷新模型列表后重试')
+      return
+    }
+
     const payload = normalizeWebGenerateNotePayload({
       ...values,
-      provider_id: modelList.find(m => m.model_name === values.model_name)!.provider_id,
+      provider_id: providerId,
       task_id: currentTaskId || '',
     })
     if (currentTaskId) {

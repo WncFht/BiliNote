@@ -4,6 +4,7 @@ import styles from './index.module.css'
 import { useNavigate, useParams } from 'react-router-dom'
 import AILogo from '@/components/Form/modelForm/Icons'
 import { useProviderStore } from '@/store/providerStore'
+
 export interface IProviderCardProps {
   id: string
   providerName: string
@@ -21,16 +22,15 @@ const ProviderCard: FC<IProviderCardProps> = ({
   const handleClick = () => {
     navigate(`/settings/model/${id}`)
   }
+
   const handleEnable = () => {
     console.log('enable', enable)
     updateProvider({
       id,
-      enabled: enable == 1 ? 0 : 1,
+      enabled: enable === 1 ? 0 : 1,
     })
   }
-  const rawId = useParams()
-  console.log('rawId', rawId)
-  // @ts-ignore
+
   const { id: currentId } = useParams()
   const isActive = currentId === id
   return (
@@ -57,7 +57,7 @@ const ProviderCard: FC<IProviderCardProps> = ({
             e.preventDefault()
             handleEnable()
           }}
-          checked={enable == 1}
+          checked={enable === 1}
         />
       </div>
     </div>

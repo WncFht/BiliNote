@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import toast from 'react-hot-toast'
 
 // 统一响应类型
-export interface IResponse<T = any> {
+export interface IResponse<T = unknown> {
   code: number;
   msg: string;
   data: T;

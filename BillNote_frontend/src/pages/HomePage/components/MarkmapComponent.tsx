@@ -5,6 +5,25 @@ import { Toolbar } from 'markmap-toolbar'
 import 'markmap-toolbar/dist/style.css'
 import JSZip from 'jszip'
 
+type ToolbarButton = Parameters<Toolbar['register']>[0]
+
+interface XMindSourceNode {
+  content?: string
+  payload?: {
+    content?: string
+  }
+  children?: XMindSourceNode[]
+}
+
+interface XMindTopicNode {
+  id: string
+  class: 'topic'
+  title: string
+  children?: {
+    attached: XMindTopicNode[]
+  }
+}
+
 export interface MarkmapEditorProps {
   /** 要渲染的 Markdown 文本 */
   value: string
@@ -13,7 +32,7 @@ export interface MarkmapEditorProps {
   /** Toolbar 上要展示的 item id 列表，默认使用 Toolbar.defaultItems */
   toolbarItems?: string[]
   /** 自定义按钮列表，会依次注册 */
-  customButtons?: any[]
+  customButtons?: ToolbarButton[]
   /** 容器 SVG 的高度，默认为 600px */
   height?: string
   /** 文档标题，用于导出HTML时的文件名 */
@@ -22,12 +41,13 @@ export interface MarkmapEditorProps {
 
 export default function MarkmapEditor({
   value,
-  onChange,
+  onChange: _onChange,
   toolbarItems,
   customButtons = [],
   height = '600px',
   title = 'mindmap',
 }: MarkmapEditorProps) {
+  void _onChange
   const svgRef = useRef<SVGSVGElement>(null)
   const mmRef = useRef<Markmap | undefined>()
   const toolbarRef = useRef<HTMLDivElement>(null)
@@ -231,7 +251,7 @@ export default function MarkmapEditor({
       const stripHtml = (html: string): string => {
         if (!html) return html;
         // 先解码HTML实体
-        let text = decodeHtmlEntities(html);
+        const text = decodeHtmlEntities(html);
         // 移除HTML标签
         const div = document.createElement('div');
         div.innerHTML = text;
@@ -239,9 +259,9 @@ export default function MarkmapEditor({
       };
 
       // 将 markmap 节点转换为 XMind 节点格式
-      const convertToXMindNode = (node: any, isRoot = false): any => {
+      const convertToXMindNode = (node: XMindSourceNode, isRoot = false): XMindTopicNode => {
         const rawTitle = node.content || node.payload?.content || '未命名';
-        const xmindNode: any = {
+        const xmindNode: XMindTopicNode = {
           id: generateId(),
           class: isRoot ? 'topic' : 'topic',
           title: stripHtml(rawTitle),
@@ -249,7 +269,7 @@ export default function MarkmapEditor({
 
         if (node.children && node.children.length > 0) {
           xmindNode.children = {
-            attached: node.children.map((child: any) => convertToXMindNode(child, false))
+            attached: node.children.map((child: XMindSourceNode) => convertToXMindNode(child, false))
           };
         }
 

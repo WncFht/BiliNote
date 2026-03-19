@@ -14,8 +14,6 @@ export const HomePage: FC = () => {
 
   const [status, setStatus] = useState<ViewStatus>('idle')
 
-  const content = currentTask?.markdown || ''
-
   useEffect(() => {
     setStatus(deriveViewStatus(currentTask?.status))
   }, [currentTask])

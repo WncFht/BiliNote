@@ -1,20 +1,25 @@
 import request from '@/utils/request.ts'
 
+type ProviderMutationPayload = Record<string, unknown>
+type ProviderConnectionPayload = {
+  id: string
+}
+
 export const getProviderList = async () => {
   return await request.get('/get_all_providers')
 }
 export const getProviderById = async (id: string) => {
   return await request.get(`/get_provider_by_id/${id}`)
 }
-export const updateProviderById = async (data: any) => {
+export const updateProviderById = async (data: ProviderMutationPayload) => {
   return await request.post('/update_provider', data)
 }
 
-export const addProvider = async (data: any) => {
+export const addProvider = async (data: ProviderMutationPayload) => {
   return await request.post('/add_provider', data)
 }
 
-export const testConnection = async (data: any) => {
+export const testConnection = async (data: ProviderConnectionPayload) => {
   return await request.post('/connect_test', data)
 }
 

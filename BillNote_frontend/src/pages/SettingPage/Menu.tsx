@@ -1,9 +1,6 @@
 import {
   BotMessageSquare,
-  SquareChevronRight,
-  Captions,
   HardDriveDownload,
-  Wrench,
   Info,
 } from 'lucide-react'
 import MenuBar, { IMenuProps } from '@/pages/SettingPage/components/menuBar.tsx'
