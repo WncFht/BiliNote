@@ -42,6 +42,19 @@ def get_task_by_video(video_id: str, platform: str):
         db.close()
 
 
+def list_video_tasks(limit: int = 50):
+    db = next(get_db())
+    try:
+        return (
+            db.query(VideoTask)
+            .order_by(VideoTask.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+    finally:
+        db.close()
+
+
 # 删除任务
 def delete_task_by_video(video_id: str, platform: str):
     db = next(get_db())

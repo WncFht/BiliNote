@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import type { ServerHistoryItem } from '@/lib/historySync.ts'
 import type { TaskStatusResponsePayload } from '@/lib/taskProgress.ts'
 import { normalizeWebGenerateNotePayload } from '@/lib/noteRequest.ts'
 import toast from 'react-hot-toast'
@@ -77,4 +78,8 @@ export const get_task_status = async (task_id: string): Promise<TaskStatusRespon
 
     throw e // 抛出错误以便调用方处理
   }
+}
+
+export const getTaskHistory = async (limit = 50): Promise<ServerHistoryItem[]> => {
+  return (await request.get(`/task_history?limit=${limit}`)) as ServerHistoryItem[]
 }

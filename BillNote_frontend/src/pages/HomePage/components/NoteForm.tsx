@@ -162,7 +162,7 @@ const NoteForm = () => {
     loadEnabledModels()
 
     return
-  }, [])
+  }, [loadEnabledModels])
   useEffect(() => {
     if (!currentTask) return
     const { formData } = currentTask
@@ -182,14 +182,7 @@ const NoteForm = () => {
         format: formData.format,
       })
     )
-  }, [
-    // 当下面任意一个变了，就重新 reset
-    currentTaskId,
-    // modelList 用来兜底 model_name
-    modelList.length,
-    // 还要加上 formData 的各字段，或者直接 currentTask
-    currentTask?.formData,
-  ])
+  }, [currentTask, currentTaskId, form, modelList])
 
   /* ---- 帮助函数 ---- */
   const isGenerating = () => !['SUCCESS', 'FAILED', undefined].includes(getCurrentTask()?.status)

@@ -16,17 +16,20 @@ import { systemCheck } from '@/services/system.ts'
 import { useCheckBackend } from '@/hooks/useCheckBackend.ts'
 import BackendInitDialog from '@/components/BackendInitDialog'
 import SettingsIndex from '@/pages/SettingPage/SettingsIndex.tsx'
+import { useTaskStore } from '@/store/taskStore'
 
 function App() {
   useTaskPolling(3000) // 每 3 秒轮询一次
   const { loading, initialized } = useCheckBackend()
+  const loadTaskHistory = useTaskStore(state => state.loadTaskHistory)
 
   // 在后端初始化完成后执行系统检查
   useEffect(() => {
     if (initialized) {
       systemCheck()
+      void loadTaskHistory()
     }
-  }, [initialized])
+  }, [initialized, loadTaskHistory])
 
   // 如果后端还未初始化，显示初始化对话框
   if (!initialized) {

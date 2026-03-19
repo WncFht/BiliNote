@@ -3,7 +3,8 @@ import { v4 as uuidv4 } from 'uuid'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-import { generateNote, delete_task } from '@/services/note.ts'
+import { generateNote, delete_task, getTaskHistory } from '@/services/note.ts'
+import { mapHistoryItemToTask, mergeHydratedTasks } from '@/lib/historySync.ts'
 import type { TaskProcessingStatus } from '@/lib/taskProgress.ts'
 
 
@@ -44,6 +45,7 @@ export interface Markdown {
 
 export interface Task {
   id: string
+  platform: string
   markdown: string|Markdown [] //为了兼容之前的笔记
   transcript: Transcript
   status: TaskStatus
@@ -77,6 +79,7 @@ interface TaskStore {
   setCurrentTask: (taskId: string | null) => void
   getCurrentTask: () => Task | null
   retryTask: (id: string, payload?: TaskFormData) => void
+  loadTaskHistory: () => Promise<void>
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -196,6 +199,14 @@ export const useTaskStore = create<TaskStore>()(
                   }
                   : t
           ),
+        }))
+      },
+
+      loadTaskHistory: async () => {
+        const history = await getTaskHistory()
+        const incomingTasks = history.map(mapHistoryItemToTask)
+        set(state => ({
+          tasks: mergeHydratedTasks(state.tasks, incomingTasks),
         }))
       },
 

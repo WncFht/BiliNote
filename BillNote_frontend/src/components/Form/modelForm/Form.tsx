@@ -85,7 +85,7 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
       setLoading(false)
     }
     load()
-  }, [id])
+  }, [id, isEditMode, loadModelsById, loadProviderById, providerForm])
   const handelDelete = async (modelId: number) => {
     if (!window.confirm('确定要删除这个模型吗？')) return
 

@@ -15,6 +15,7 @@ from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, Up
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 
+from app.db.video_task_dao import list_video_tasks
 from app.enmus.exception import NoteErrorEnum
 from app.enmus.note_enums import DownloadQuality
 from app.enmus.task_status_enums import TaskStatus
@@ -170,6 +171,54 @@ def save_note_to_file(task_id: str, note):
         json.dump(asdict(note), f, ensure_ascii=False, indent=2)
 
 
+def _load_json_file(path: str):
+    if not os.path.exists(path):
+        return None
+
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            return json.load(file)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def load_task_snapshot(task_id: str):
+    status_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.status.json")
+    result_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.json")
+
+    status_content = _load_json_file(status_path) or {}
+    result_content = _load_json_file(result_path)
+
+    status = status_content.get("status")
+    message = status_content.get("message", "")
+
+    if result_content and not status:
+        status = TaskStatus.SUCCESS.value
+
+    if not status:
+        status = TaskStatus.PENDING.value
+
+    return {
+        "status": status,
+        "message": message,
+        "result": result_content,
+    }
+
+
+def serialize_task_history_entry(task_row) -> dict:
+    snapshot = load_task_snapshot(task_row.task_id)
+    created_at = task_row.created_at.isoformat() if getattr(task_row, "created_at", None) else ""
+
+    return {
+        "task_id": task_row.task_id,
+        "platform": task_row.platform,
+        "created_at": created_at,
+        "status": snapshot["status"],
+        "message": snapshot["message"],
+        "result": snapshot["result"],
+    }
+
+
 def run_note_task(task_id: str, video_url: str, platform: str, quality: DownloadQuality,
                   link: bool = False, screenshot: bool = False, model_name: str = None, provider_id: str = None,
                   _format: list = None, style: str = None, extras: str = None, video_understanding: bool = False,
@@ -267,62 +316,49 @@ def generate_note(data: VideoRequest, background_tasks: BackgroundTasks):
 
 @router.get("/task_status/{task_id}")
 def get_task_status(task_id: str):
-    status_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.status.json")
-    result_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.json")
+    snapshot = load_task_snapshot(task_id)
+    status = snapshot["status"]
+    message = snapshot["message"]
+    result_content = snapshot["result"]
 
-    # 优先读状态文件
-    if os.path.exists(status_path):
-        with open(status_path, "r", encoding="utf-8") as f:
-            status_content = json.load(f)
+    if status == TaskStatus.SUCCESS.value:
+        if result_content:
+            return R.success({
+                "status": status,
+                "result": result_content,
+                "message": message,
+                "task_id": task_id
+            })
+        return R.success({
+            "status": TaskStatus.PENDING.value,
+            "message": "任务完成，但结果文件未找到",
+            "task_id": task_id
+        })
 
-        status = status_content.get("status")
-        message = status_content.get("message", "")
+    if status == TaskStatus.FAILED.value:
+        return R.error(message or "任务失败", code=500, status_code=500)
 
-        if status == TaskStatus.SUCCESS.value:
-            # 成功状态的话，继续读取最终笔记内容
-            if os.path.exists(result_path):
-                with open(result_path, "r", encoding="utf-8") as rf:
-                    result_content = json.load(rf)
-                return R.success({
-                    "status": status,
-                    "result": result_content,
-                    "message": message,
-                    "task_id": task_id
-                })
-            else:
-                # 理论上不会出现，保险处理
-                return R.success({
-                    "status": TaskStatus.PENDING.value,
-                    "message": "任务完成，但结果文件未找到",
-                    "task_id": task_id
-                })
-
-        if status == TaskStatus.FAILED.value:
-            return R.error(message or "任务失败", code=500, status_code=500)
-
-        # 处理中状态
+    if snapshot["result"]:
         return R.success({
             "status": status,
+            "result": snapshot["result"],
             "message": message,
             "task_id": task_id
         })
 
-    # 没有状态文件，但有结果
-    if os.path.exists(result_path):
-        with open(result_path, "r", encoding="utf-8") as f:
-            result_content = json.load(f)
-        return R.success({
-            "status": TaskStatus.SUCCESS.value,
-            "result": result_content,
-            "task_id": task_id
-        })
-
-    # 什么都没有，默认PENDING
     return R.success({
-        "status": TaskStatus.PENDING.value,
-        "message": "任务排队中",
+        "status": status,
+        "message": message or "任务排队中",
         "task_id": task_id
     })
+
+
+@router.get("/task_history")
+def get_task_history(limit: int = 50):
+    safe_limit = max(1, min(limit, 200))
+    tasks = list_video_tasks(limit=safe_limit)
+    payload = [serialize_task_history_entry(task_row) for task_row in tasks]
+    return R.success(payload)
 
 
 @router.get("/image_proxy")

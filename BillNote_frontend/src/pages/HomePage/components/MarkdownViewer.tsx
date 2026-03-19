@@ -82,7 +82,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
         setCurrentVerId(latestVersion.ver_id)
       }
     }
-  }, [currentTask?.id, taskStatus])
+  }, [currentTask, isMultiVersion, taskStatus])
   useEffect(() => {
     if (!currentTask || !isMultiVersion) return
 
@@ -93,7 +93,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
       setCreateTime(currentVer.created_at || '')
       setSelectedContent(currentVer.content)
     }
-  }, [currentVerId, currentTask?.id])
+  }, [currentTask, currentVerId, isMultiVersion])
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(selectedContent)

@@ -19,8 +19,8 @@
    Do instead: run networked commands with `zsh -lc 'proxy_on >/dev/null; <command>'` unless the target is localhost.
 
 ## Domain Behavior Guardrails
-1. **[2026-03-19] Web generation history is device-local**
-   Do instead: when different devices show different note histories, inspect the frontend Zustand `task-storage` persistence first; do not assume the backend serves a shared history list.
+1. **[2026-03-19] Web history now hydrates from backend task history**
+   Do instead: when different devices show different note histories, inspect `/api/task_history` and frontend `mergeHydratedTasks` before blaming local Zustand persistence alone.
 2. **[2026-03-19] Local runtime uses split logs**
    Do instead: treat `backend.local.log` and `frontend.local.log` as process stdout/stderr, and `backend/logs/app.log` as structured backend app logging.
 3. **[2026-03-19] Web note generation must keep image-input mode disabled until payload handling is redesigned**
