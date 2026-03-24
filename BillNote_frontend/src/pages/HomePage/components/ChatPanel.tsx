@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import { Bubble, Sender } from '@ant-design/x'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -16,6 +16,14 @@ interface ChatPanelProps {
   taskId: string
   mode: ChatMode
   onModeChange: (mode: ChatMode) => void
+}
+
+interface BubbleItem {
+  key: string
+  role: 'user' | 'ai'
+  content: string
+  footer?: ReactNode
+  loading?: boolean
 }
 
 function SourceBadges({ sources }: { sources: ChatSource[] }) {
@@ -53,7 +61,8 @@ export default function ChatPanel({ taskId, mode, onModeChange }: ChatPanelProps
   const [loading, setLoading] = useState(false)
   const [indexStatus, setIndexStatus] = useState<IndexStatus | null>(null)
 
-  const messages = useChatStore(state => state.chatHistory[taskId]) ?? []
+  const storedMessages = useChatStore(state => state.chatHistory[taskId])
+  const messages = useMemo(() => storedMessages ?? [], [storedMessages])
   const addMessage = useChatStore(state => state.addMessage)
   const clearChat = useChatStore(state => state.clearChat)
 
@@ -139,7 +148,7 @@ export default function ChatPanel({ taskId, mode, onModeChange }: ChatPanelProps
 
   // 转换为 Bubble.List 的数据格式
   const bubbleItems = useMemo(() => {
-    const items = messages.map((msg, i) => ({
+    const items: BubbleItem[] = messages.map((msg, i) => ({
       key: `msg-${i}`,
       role: msg.role === 'user' ? ('user' as const) : ('ai' as const),
       content: msg.content,
@@ -155,7 +164,7 @@ export default function ChatPanel({ taskId, mode, onModeChange }: ChatPanelProps
         role: 'ai' as const,
         content: '思考中...',
         loading: true,
-      } as any)
+      })
     }
 
     return items
@@ -182,7 +191,7 @@ export default function ChatPanel({ taskId, mode, onModeChange }: ChatPanelProps
           </div>
         ),
         variant: 'outlined' as const,
-        contentRender: (content: any) => (
+        contentRender: (content: unknown) => (
           <div className="markdown-body prose prose-sm max-w-none prose-p:my-1 prose-li:my-0.5 prose-headings:my-2">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {typeof content === 'string' ? content : String(content)}

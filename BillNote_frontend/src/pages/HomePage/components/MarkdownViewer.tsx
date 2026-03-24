@@ -1,4 +1,4 @@
-import { FC, Suspense, lazy, useEffect, useState } from 'react'
+import { FC, Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { ArrowRight, ExternalLink, Play } from 'lucide-react'
 import { toast } from 'react-hot-toast'
@@ -68,9 +68,10 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
   const taskMessage = currentTask?.message || ''
   const progressDisplay = buildTaskProgressDisplay(taskStatus, taskMessage)
   const videoLink = currentTask ? buildTaskVideoLink(currentTask) : null
-  const markdownVersions: VersionNote[] = Array.isArray(currentTask?.markdown)
-    ? currentTask.markdown
-    : []
+  const markdownVersions = useMemo<VersionNote[]>(
+    () => (Array.isArray(currentTask?.markdown) ? currentTask.markdown : []),
+    [currentTask?.markdown],
+  )
   const isMultiVersion = markdownVersions.length > 0
   const canChat = Boolean(currentTask?.id && (taskStatus === 'SUCCESS' || isMultiVersion))
 

@@ -169,9 +169,28 @@ def resolve_output_path(
 
 
 def write_markdown(markdown: str, output_path: Path) -> Path:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(markdown, encoding="utf-8")
-    return output_path
+    candidate_paths = [output_path]
+
+    # Keep the historical macOS default path for compatibility, but when the CLI
+    # runs on Linux translate it to the equivalent location under the current
+    # home directory so the command still succeeds.
+    if output_path.is_absolute() and output_path.parts[:3] == ("/", "Users", "fanghaotian"):
+        translated_path = Path.home().joinpath(*output_path.parts[3:])
+        if translated_path != output_path:
+            candidate_paths.append(translated_path)
+
+    last_error: OSError | None = None
+    for candidate in candidate_paths:
+        try:
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            candidate.write_text(markdown, encoding="utf-8")
+            return candidate
+        except OSError as exc:
+            last_error = exc
+
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("failed to write markdown output")
 
 
 def fallback_output_path(original_path: Path) -> Path:
