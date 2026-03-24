@@ -1,8 +1,9 @@
-import mlx_whisper
-from pathlib import Path
 import os
 import platform
+from pathlib import Path
 from threading import Lock
+from types import SimpleNamespace
+
 from huggingface_hub import snapshot_download
 
 from app.decorators.timeit import timeit
@@ -12,7 +13,24 @@ from app.utils.logger import get_logger
 from app.utils.path_helper import get_model_dir
 from events import transcription_finished
 
+try:
+    import mlx_whisper as _mlx_whisper
+
+    MLX_WHISPER_INSTALLED = True
+except ImportError:
+    _mlx_whisper = None
+    MLX_WHISPER_INSTALLED = False
+
 logger = get_logger(__name__)
+
+
+def _raise_missing_mlx_whisper(*args, **kwargs):
+    del args, kwargs
+    raise ModuleNotFoundError("mlx_whisper is not installed")
+
+
+mlx_whisper = _mlx_whisper or SimpleNamespace(transcribe=_raise_missing_mlx_whisper)
+
 
 class MLXWhisperTranscriber(Transcriber):
     _transcribe_lock = Lock()
@@ -24,16 +42,19 @@ class MLXWhisperTranscriber(Transcriber):
         # 检查平台
         if platform.system() != "Darwin":
             raise RuntimeError("MLX Whisper 仅支持 Apple 平台")
-            
+
+        if not MLX_WHISPER_INSTALLED:
+            raise RuntimeError("mlx_whisper 未安装，请先执行 `pip install mlx_whisper`")
+
         # 检查环境变量
         if os.environ.get("TRANSCRIBER_TYPE") != "mlx-whisper":
             raise RuntimeError("必须设置环境变量 TRANSCRIBER_TYPE=mlx-whisper 才能使用 MLX Whisper")
-            
+
         self.model_size = model_size
         repo_suffix = model_size if model_size.endswith("-mlx") else f"{model_size}-mlx"
         self.model_name = f"mlx-community/whisper-{repo_suffix}"
         self.model_path = None
-        
+
         # 设置模型路径
         model_dir = get_model_dir("mlx-whisper")
         self.model_path = os.path.join(model_dir, self.model_name)
@@ -46,7 +67,7 @@ class MLXWhisperTranscriber(Transcriber):
                 local_dir_use_symlinks=False,
             )
             logger.info("模型下载完成")
-        
+
         logger.info(f"初始化 MLX Whisper 转录器，模型：{self.model_name}")
 
     @timeit
@@ -59,11 +80,11 @@ class MLXWhisperTranscriber(Transcriber):
                     file_path,
                     path_or_hf_repo=f"{self.model_name}"
                 )
-            
+
             # 转换为标准格式
             segments = []
             full_text = ""
-            
+
             for segment in result["segments"]:
                 text = segment["text"].strip()
                 full_text += text + " "
@@ -72,17 +93,17 @@ class MLXWhisperTranscriber(Transcriber):
                     end=segment["end"],
                     text=text
                 ))
-            
+
             transcript_result = TranscriptResult(
                 language=result.get("language", "unknown"),
                 full_text=full_text.strip(),
                 segments=segments,
                 raw=result
             )
-            
+
             # self.on_finish(file_path, transcript_result)
             return transcript_result
-            
+
         except Exception as e:
             logger.error(f"MLX Whisper 转写失败：{e}")
             raise e
@@ -91,4 +112,4 @@ class MLXWhisperTranscriber(Transcriber):
         logger.info("MLX Whisper 转写完成")
         transcription_finished.send({
             "file_path": video_path,
-        }) 
+        })

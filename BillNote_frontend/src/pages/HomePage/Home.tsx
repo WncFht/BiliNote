@@ -1,8 +1,9 @@
 import { FC, Suspense, lazy, useEffect, useState } from 'react'
+
+import { deriveViewStatus, type ViewStatus } from '@/lib/taskProgress.ts'
 import HomeLayout from '@/layouts/HomeLayout.tsx'
 import NoteForm from '@/pages/HomePage/components/NoteForm.tsx'
 import { useTaskStore } from '@/store/taskStore'
-import { deriveViewStatus, type ViewStatus } from '@/lib/taskProgress.ts'
 
 const MarkdownViewer = lazy(() => import('@/pages/HomePage/components/MarkdownViewer.tsx'))
 const History = lazy(() => import('@/pages/HomePage/components/History.tsx'))
@@ -33,8 +34,7 @@ const HistoryLoader = () => (
 export const HomePage: FC = () => {
   const tasks = useTaskStore(state => state.tasks)
   const currentTaskId = useTaskStore(state => state.currentTaskId)
-
-  const currentTask = tasks.find(t => t.id === currentTaskId)
+  const currentTask = tasks.find(task => task.id === currentTaskId)
 
   const [status, setStatus] = useState<ViewStatus>('idle')
 
@@ -42,12 +42,6 @@ export const HomePage: FC = () => {
     setStatus(deriveViewStatus(currentTask?.status))
   }, [currentTask])
 
-  // useEffect( () => {
-  //     get_task_status('d4e87938-c066-48a0-bbd5-9bec40d53354').then(res=>{
-  //         console.log('res1',res)
-  //         setContent(res.data.result.markdown)
-  //     })
-  // }, [tasks]);
   return (
     <HomeLayout
       NoteForm={<NoteForm />}

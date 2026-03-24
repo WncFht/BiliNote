@@ -1,22 +1,24 @@
 import './App.css'
-import { useTaskPolling } from '@/hooks/useTaskPolling.ts'
-import { Suspense, lazy, useEffect } from 'react'
-import { BrowserRouter, Routes } from 'react-router-dom'
-import { Route } from 'react-router-dom'
-import Index from '@/pages/Index.tsx'
-import { useCheckBackend } from '@/hooks/useCheckBackend.ts'
+import { lazy, Suspense, useEffect } from 'react'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+
 import BackendInitDialog from '@/components/BackendInitDialog'
-import { useTaskStore } from '@/store/taskStore'
+import { useCheckBackend } from '@/hooks/useCheckBackend.ts'
+import { useTaskPolling } from '@/hooks/useTaskPolling.ts'
 import { startTaskHistoryRefresh } from '@/lib/historySync.ts'
+import Index from '@/pages/Index.tsx'
+import { HomePage } from '@/pages/HomePage/Home.tsx'
+import { systemCheck } from '@/services/system.ts'
+import { useTaskStore } from '@/store/taskStore'
 
-import { HomePage } from './pages/HomePage/Home.tsx'
-
-const SettingPage = lazy(() => import('./pages/SettingPage/index.tsx'))
-const Model = lazy(() => import('./pages/SettingPage/Model.tsx'))
+const SettingPage = lazy(() => import('@/pages/SettingPage/index.tsx'))
+const Model = lazy(() => import('@/pages/SettingPage/Model.tsx'))
 const ProviderForm = lazy(() => import('@/components/Form/modelForm/Form.tsx'))
-const Downloader = lazy(() => import('./pages/SettingPage/Downloader.tsx'))
+const Downloader = lazy(() => import('@/pages/SettingPage/Downloader.tsx'))
 const DownloaderForm = lazy(() => import('@/components/Form/DownloaderForm/Form.tsx'))
 const SettingsIndex = lazy(() => import('@/pages/SettingPage/SettingsIndex.tsx'))
+const TranscriberPage = lazy(() => import('@/pages/SettingPage/transcriber.tsx'))
+const Monitor = lazy(() => import('@/pages/SettingPage/Monitor.tsx'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 
 const RouteLoader = () => (
@@ -26,15 +28,18 @@ const RouteLoader = () => (
 )
 
 function App() {
-  useTaskPolling(3000) // 每 3 秒轮询一次
+  useTaskPolling(3000)
   const { loading, initialized } = useCheckBackend()
   const loadTaskHistory = useTaskStore(state => state.loadTaskHistory)
 
-  // 首屏优先保持可交互，历史列表改为在浏览器空闲时同步。
   useEffect(() => {
     if (!initialized) {
       return
     }
+
+    void systemCheck().catch(error => {
+      console.warn('系统检查失败', error)
+    })
 
     let cancelled = false
 
@@ -73,40 +78,34 @@ function App() {
     }
   }, [initialized, loadTaskHistory])
 
-  // 如果后端还未初始化，显示初始化对话框
   if (!initialized) {
-    return (
-      <>
-        <BackendInitDialog open={loading} />
-      </>
-    )
+    return <BackendInitDialog open={loading} />
   }
 
-  // 后端已初始化，渲染主应用
   return (
-    <>
-      <BrowserRouter>
-        <Suspense fallback={<RouteLoader />}>
-          <Routes>
-            <Route path="/" element={<Index />}>
-              <Route index element={<HomePage />} />
-              <Route path="settings" element={<SettingPage />}>
-                <Route index element={<SettingsIndex />} />
-                <Route path="model" element={<Model />}>
-                  <Route path="new" element={<ProviderForm isCreate />} />
-                  <Route path=":id" element={<ProviderForm />} />
-                </Route>
-                <Route path="download" element={<Downloader />}>
-                  <Route path=":id" element={<DownloaderForm />} />
-                </Route>
-                <Route path="*" element={<NotFoundPage />} />
+    <BrowserRouter>
+      <Suspense fallback={<RouteLoader />}>
+        <Routes>
+          <Route path="/" element={<Index />}>
+            <Route index element={<HomePage />} />
+            <Route path="settings" element={<SettingPage />}>
+              <Route index element={<SettingsIndex />} />
+              <Route path="model" element={<Model />}>
+                <Route path="new" element={<ProviderForm isCreate />} />
+                <Route path=":id" element={<ProviderForm />} />
               </Route>
+              <Route path="download" element={<Downloader />}>
+                <Route path=":id" element={<DownloaderForm />} />
+              </Route>
+              <Route path="transcriber" element={<TranscriberPage />} />
+              <Route path="monitor" element={<Monitor />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </>
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
   )
 }
 

@@ -22,6 +22,7 @@ from app.enmus.note_enums import DownloadQuality
 from app.enmus.task_status_enums import TaskStatus
 from app.exceptions.note import NoteError
 from app.services.note import NoteGenerator, logger
+from app.services.task_serial_executor import task_serial_executor
 from app.utils.response import ResponseWrapper as R
 from app.utils.url_parser import extract_video_id
 from app.validators.video_url_validator import is_supported_video_url
@@ -299,28 +300,38 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
         grid_size=grid_size,
     )
 
-    note = NoteGenerator().generate(
-        video_url=video_url,
-        platform=platform,
-        quality=quality,
-        task_id=task_id,
-        model_name=model_name,
-        provider_id=provider_id,
-        link=link,
-        _format=normalized_options["_format"],
-        style=style,
-        extras=extras,
-        screenshot=normalized_options["screenshot"],
-        video_understanding=normalized_options["video_understanding"],
-        video_interval=normalized_options["video_interval"],
-        grid_size=normalized_options["grid_size"],
-    )
+    def _execute_note_task():
+        return NoteGenerator().generate(
+            video_url=video_url,
+            platform=platform,
+            quality=quality,
+            task_id=task_id,
+            model_name=model_name,
+            provider_id=provider_id,
+            link=link,
+            _format=normalized_options["_format"],
+            style=style,
+            extras=extras,
+            screenshot=normalized_options["screenshot"],
+            video_understanding=normalized_options["video_understanding"],
+            video_interval=normalized_options["video_interval"],
+            grid_size=normalized_options["grid_size"],
+        )
+
+    logger.info(f"任务进入执行队列 (task_id={task_id})")
+    note = task_serial_executor.run(_execute_note_task)
     logger.info(f"Note generated: {task_id}")
     if not note or not note.markdown:
         logger.warning(f"任务 {task_id} 执行失败，跳过保存")
         return
     save_note_to_file(task_id, note)
 
+    # 自动建立向量索引（用于 AI 问答），失败不影响笔记生成
+    try:
+        from app.services.vector_store import VectorStoreManager
+        VectorStoreManager().index_task(task_id)
+    except Exception as e:
+        logger.warning(f"向量索引失败（不影响笔记）: {e}")
 
 
 @router.post('/delete_task')
@@ -369,12 +380,13 @@ def generate_note(data: VideoRequest, background_tasks: BackgroundTasks):
         if data.task_id:
             # 如果传了task_id，说明是重试！
             task_id = data.task_id
-            # 更新之前的状态
-            NoteGenerator()._update_status(task_id, TaskStatus.PENDING)
             logger.info(f"重试模式，复用已有 task_id={task_id}")
         else:
             # 正常新建任务
             task_id = str(uuid.uuid4())
+
+        # 统一先写入 PENDING，表示已进入队列等待串行执行
+        NoteGenerator()._update_status(task_id, TaskStatus.PENDING)
 
         background_tasks.add_task(run_note_task, task_id, data.video_url, data.platform, data.quality, data.link,
                                   data.screenshot, data.model_name, data.provider_id, data.format, data.style,

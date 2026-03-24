@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import re
 from dataclasses import asdict
 from pathlib import Path
 from threading import Event, Thread
@@ -33,7 +32,8 @@ from app.services.constant import SUPPORT_PLATFORM_MAP
 from app.services.provider import ProviderService
 from app.transcriber.base import Transcriber
 from app.transcriber.transcriber_provider import get_transcriber, _transcribers
-from app.utils.note_helper import normalize_math_delimiters, replace_content_markers
+from app.utils.note_helper import normalize_math_delimiters, prepend_source_link, replace_content_markers
+from app.utils.screenshot_marker import extract_screenshot_timestamps
 from app.utils.status_code import StatusCode
 from app.utils.video_helper import generate_screenshot
 from app.utils.video_reader import VideoReader
@@ -68,9 +68,11 @@ class NoteGenerator:
     """
 
     def __init__(self):
-        self.model_size: str = "base"
+        from app.services.transcriber_config_manager import TranscriberConfigManager
+        config_manager = TranscriberConfigManager()
+        self.model_size: str = config_manager.get_whisper_model_size()
         self.device: Optional[str] = None
-        self.transcriber_type: str = os.getenv("TRANSCRIBER_TYPE", "fast-whisper")
+        self.transcriber_type: str = config_manager.get_transcriber_type()
         self.transcriber: Optional[Transcriber] = None
         self.video_path: Optional[Path] = None
         self.video_img_urls=[]
@@ -138,7 +140,6 @@ class NoteGenerator:
             audio_cache_file = NOTE_OUTPUT_DIR / f"{task_id}_audio.json"
             transcript_cache_file = NOTE_OUTPUT_DIR / f"{task_id}_transcript.json"
             markdown_cache_file = NOTE_OUTPUT_DIR / f"{task_id}_markdown.md"
-            print(audio_cache_file)
             need_video = screenshot or video_understanding
             if platform == "bilibili":
                 audio_meta = self._get_bilibili_metadata(
@@ -169,7 +170,6 @@ class NoteGenerator:
                     task_id=task_id,
                 )
             else:
-                # 1. 下载音频/视频
                 audio_meta = self._download_media(
                     downloader=downloader,
                     video_url=video_url,
@@ -183,9 +183,6 @@ class NoteGenerator:
                     video_interval=video_interval,
                     grid_size=grid_size,
                 )
-
-                # 2. 获取字幕/转写文字
-                # 优先尝试获取平台字幕，没有再 fallback 到音频转写
                 transcript = self._get_transcript(
                     downloader=downloader,
                     video_url=video_url,
@@ -218,6 +215,8 @@ class NoteGenerator:
                     audio_meta=audio_meta,
                     platform=platform,
                 )
+
+            markdown = prepend_source_link(markdown, str(video_url))
 
             # 5. 保存记录到数据库
             self._update_status(task_id, TaskStatus.SAVING)
@@ -586,6 +585,7 @@ class NoteGenerator:
         video_understanding: bool,
         video_interval: int,
         grid_size: List[int],
+        skip_download: bool = False,
     ) -> AudioDownloadResult | None:
         """
         1. 检查音频缓存；若不存在，则根据需要下载音频或视频（若需截图/可视化）。
@@ -607,8 +607,34 @@ class NoteGenerator:
         """
         task_id = audio_cache_file.stem.split("_")[0]
         self._update_status(task_id, status_phase)
+        # 已有缓存，尝试加载
+        if audio_cache_file.exists():
+            logger.info(f"检测到音频缓存 ({audio_cache_file})，直接读取")
+            try:
+                data = json.loads(audio_cache_file.read_text(encoding="utf-8"))
+                return AudioDownloadResult(**data)
+            except Exception as e:
+                logger.warning(f"读取音频缓存失败，将重新下载：{e}")
 
-
+        # 有字幕且不需要截图/视频理解时，只提取元信息不下载文件
+        if skip_download:
+            logger.info("已有字幕，仅提取视频元信息（不下载音视频）")
+            try:
+                audio = downloader.download(
+                    video_url=video_url,
+                    quality=quality,
+                    output_dir=output_path,
+                    need_video=False,
+                    skip_download=True,
+                )
+                audio_cache_file.write_text(
+                    json.dumps(asdict(audio), ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                logger.info(f"元信息提取完成 ({audio_cache_file})")
+                return audio
+            except Exception as exc:
+                logger.warning(f"元信息提取失败，将尝试完整下载: {exc}")
 
         # 判断是否需要下载视频
         need_video = screenshot or video_understanding
@@ -619,17 +645,16 @@ class NoteGenerator:
                     task_id=task_id,
                     status=status_phase,
                     heartbeat_message="视频下载进行中",
-                    operation=lambda: downloader.download_video(video_url),
+                    operation=lambda: downloader.download_video(video_url, output_dir=output_path),
                 )
                 self.video_path = Path(video_path_str)
                 logger.info(f"视频下载完成：{self.video_path}")
 
-                # 若指定了 grid_size，则生成缩略图
                 if grid_size:
-                    self.video_img_urls=VideoReader(
+                    self.video_img_urls = VideoReader(
                         video_path=str(self.video_path),
                         grid_size=tuple(grid_size),
-                        frame_interval=video_interval,
+                        frame_interval=video_interval if video_interval and video_interval > 0 else 6,
                         unit_width=1280,
                         unit_height=720,
                         save_quality=90,
@@ -638,17 +663,9 @@ class NoteGenerator:
                     logger.info("未指定 grid_size，跳过缩略图生成")
             except Exception as exc:
                 logger.error(f"视频下载失败：{exc}")
-
                 self._handle_exception(task_id, exc)
                 raise
-        # 已有缓存，尝试加载
-        if audio_cache_file.exists():
-            logger.info(f"检测到音频缓存 ({audio_cache_file})，直接读取")
-            try:
-                data = json.loads(audio_cache_file.read_text(encoding="utf-8"))
-                return AudioDownloadResult(**data)
-            except Exception as e:
-                logger.warning(f"读取音频缓存失败，将重新下载：{e}")
+
         # 下载音频
         try:
             logger.info("开始下载音频")
@@ -663,7 +680,6 @@ class NoteGenerator:
                     need_video=need_video,
                 ),
             )
-            # 缓存 audio 元信息到本地 JSON
             audio_cache_file.write_text(json.dumps(asdict(audio), ensure_ascii=False, indent=2), encoding="utf-8")
             logger.info(f"音频下载并缓存成功 ({audio_cache_file})")
             return audio
@@ -820,6 +836,7 @@ class NoteGenerator:
             _format=formats,
             style=style,
             extras=extras,
+            checkpoint_key=task_id,
         )
 
         try:
@@ -876,7 +893,7 @@ class NoteGenerator:
         :param video_path: 本地视频文件路径
         :return: 替换后的 Markdown 字符串
         """
-        matches: List[Tuple[str, int]] = self._extract_screenshot_timestamps(markdown)
+        matches: List[Tuple[str, int]] = extract_screenshot_timestamps(markdown)
         for idx, (marker, ts) in enumerate(matches):
             try:
                 img_path = generate_screenshot(str(video_path), str(IMAGE_OUTPUT_DIR), ts, idx)
@@ -899,14 +916,7 @@ class NoteGenerator:
         :param markdown: 原始 Markdown 文本
         :return: 标记与对应时间戳秒数的列表
         """
-        pattern = r"(?:\*Screenshot-(\d{2}):(\d{2})|Screenshot-\[(\d{2}):(\d{2})\])"
-        results: List[Tuple[str, int]] = []
-        for match in re.finditer(pattern, markdown):
-            mm = match.group(1) or match.group(3)
-            ss = match.group(2) or match.group(4)
-            total_seconds = int(mm) * 60 + int(ss)
-            results.append((match.group(0), total_seconds))
-        return results
+        return extract_screenshot_timestamps(markdown)
 
     def _save_metadata(self, video_id: str, platform: str, task_id: str) -> None:
         """

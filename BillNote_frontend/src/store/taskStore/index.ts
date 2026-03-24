@@ -15,7 +15,7 @@ export interface AudioMeta {
   duration: number
   file_path: string
   platform: string
-  raw_info: unknown
+  raw_info: Record<string, unknown> | null
   title: string
   video_id: string
 }

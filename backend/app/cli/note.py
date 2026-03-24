@@ -174,6 +174,10 @@ def write_markdown(markdown: str, output_path: Path) -> Path:
     return output_path
 
 
+def fallback_output_path(original_path: Path) -> Path:
+    return project_root() / "note_results" / "markdown" / original_path.name
+
+
 def now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
@@ -301,7 +305,15 @@ def generate_note(
         preferred_stem=result.audio_meta.title,
         unique_prefix=result.audio_meta.video_id if batch_mode else None,
     )
-    written_path = write_markdown(result.markdown, output_path)
+    try:
+        written_path = write_markdown(result.markdown, output_path)
+    except PermissionError:
+        if output is not None:
+            raise
+        written_path = write_markdown(
+            result.markdown,
+            fallback_output_path(output_path),
+        )
     return NoteGenerationOutput(
         output_path=written_path,
         video_id=result.audio_meta.video_id,

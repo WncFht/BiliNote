@@ -15,6 +15,7 @@ class MLXWhisperTranscriberRepoTest(unittest.TestCase):
             with (
                 patch.dict(os.environ, {"TRANSCRIBER_TYPE": "mlx-whisper"}, clear=False),
                 patch("app.transcriber.mlx_whisper_transcriber.platform.system", return_value="Darwin"),
+                patch("app.transcriber.mlx_whisper_transcriber.MLX_WHISPER_INSTALLED", True),
                 patch("app.transcriber.mlx_whisper_transcriber.get_model_dir", return_value=temp_dir),
                 patch("app.transcriber.mlx_whisper_transcriber.Path.exists", return_value=False),
                 patch("app.transcriber.mlx_whisper_transcriber.snapshot_download") as snapshot_download,
@@ -61,6 +62,7 @@ class MLXWhisperTranscriberRepoTest(unittest.TestCase):
             with (
                 patch.dict(os.environ, {"TRANSCRIBER_TYPE": "mlx-whisper"}, clear=False),
                 patch("app.transcriber.mlx_whisper_transcriber.platform.system", return_value="Darwin"),
+                patch("app.transcriber.mlx_whisper_transcriber.MLX_WHISPER_INSTALLED", True),
                 patch("app.transcriber.mlx_whisper_transcriber.get_model_dir", return_value=temp_dir),
                 patch("app.transcriber.mlx_whisper_transcriber.Path.exists", return_value=True),
                 patch("app.transcriber.mlx_whisper_transcriber.mlx_whisper.transcribe", side_effect=fake_transcribe),
