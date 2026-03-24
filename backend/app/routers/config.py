@@ -1,6 +1,7 @@
 import os
 import platform
 from pathlib import Path
+from types import ModuleType
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
@@ -214,19 +215,45 @@ async def sys_check():
     return R.success()
 
 
+def _load_torch_module() -> ModuleType | None:
+    try:
+        import torch
+    except Exception:
+        return None
+    return torch
+
+
+def _build_cuda_info(torch_module: ModuleType | None) -> dict[str, object]:
+    if torch_module is None:
+        return {
+            "available": False,
+            "version": None,
+            "gpu_name": None,
+        }
+
+    try:
+        cuda_available = bool(torch_module.cuda.is_available())
+    except Exception:
+        cuda_available = False
+
+    gpu_name = None
+    if cuda_available:
+        try:
+            gpu_name = torch_module.cuda.get_device_name(0)
+        except Exception:
+            gpu_name = None
+
+    return {
+        "available": cuda_available,
+        "version": getattr(torch_module.version, "cuda", None) if cuda_available else None,
+        "gpu_name": gpu_name,
+    }
+
+
 @router.get("/deploy_status")
 async def deploy_status():
     """返回部署监控所需的所有状态信息"""
-    import torch
-    import os
-
-    # CUDA 状态
-    cuda_available = torch.cuda.is_available()
-    cuda_info = {
-        "available": cuda_available,
-        "version": torch.version.cuda if cuda_available else None,
-        "gpu_name": torch.cuda.get_device_name(0) if cuda_available else None,
-    }
+    cuda_info = _build_cuda_info(_load_torch_module())
 
     # Whisper 模型状态（从配置文件读取，与前端设置同步）
     transcriber_cfg = transcriber_config_manager.get_config()
